@@ -18,8 +18,19 @@ const argv = yargs(hideBin(process.argv))
 		description: "Directory to download files to",
 		default: "./",
 	})
+  .option("media", {
+    type: "string",
+    choices: ["video", "image", "all"], 
+    default: "all",
+    description: "Download media type: 'video', 'image', or 'all', 'all' is default",
+  })
 	.help()
 	.alias("help", "h").argv;
+
+const isImage = name => /\.(jpg|jpeg|png|gif|bmp|tiff|webp|avif|svg|ico)$/i.test(name);
+const isVideo = name => /\.(mp4|avi|mov|mkv|webm|flv|wmv|mpeg|mpg|3gp)$/i.test(name);
+const testMediaType = (name, type) => type === 'all' ? true 
+  : (type === 'image' ? !isVideo(name) : !isImage(name));
 
 async function downloadFiles(data, downloadDir) {
 	if (!fs.existsSync(downloadDir)) {
@@ -54,14 +65,12 @@ async function downloadFiles(data, downloadDir) {
 const userPostsAPI = (user, offset) =>
 	`${user.domain}/api/v1/${user.service}/user/${user.name}?o=${offset}`;
 
-async function getUserFiles(user) {
+async function getUserFiles(user, typeFilter) {
 	const userPosts = [];
 
 	const offset = 50;
 	for (let i = 0; i < 1000; i++) {
-		const posts = await fetch(userPostsAPI(user, offset * i)).then((r) =>
-			r.json(),
-		);
+		const posts = await fetch(userPostsAPI(user, offset * i)).then((r) => r.json());
 		userPosts.push(...posts);
 		if (posts.length < 50) break;
 	}
@@ -76,10 +85,11 @@ async function getUserFiles(user) {
 		// if (p.user !== user.name) continue; // ignore reposts?
 
 		const postFiles = [...p.attachments, p.file]
-			.filter((p) => p.path)
-			.map((f) => {
+			.filter(f => f.path)
+      .filter(f => testMediaType(f.name, typeFilter))
+			.map((f, i) => {
 				const ext = f.name.split(".").pop();
-				const name = `${datentitle}.${ext}`;
+				const name = `${datentitle} ${i}.${ext}`;
 				const src = `${user.domain}/${f.path}`;
 				return { name, src };
 			});
@@ -107,13 +117,14 @@ function parseUser(url) {
 }
 
 async function run() {
-	const { url, dir } = argv;
+	const { url, dir, media } = argv;
 	const user = parseUser(url);
   const userDir = `${user.name}-${user.service}`;
 	const downloadDir =
 		dir === "./" ? path.resolve(dir, userDir) : 
     path.join(os.homedir(), path.join(dir, userDir));
-	const files = await getUserFiles(user);
+	const files = await getUserFiles(user, media);
+  console.log(files.length, 'files found');
 	await downloadFiles(files, downloadDir);
 }
 

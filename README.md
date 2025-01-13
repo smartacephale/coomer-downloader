@@ -8,7 +8,8 @@ How to use:
 npm install -g coomer-downloader
 npx coomer-downloader --u https://coomer.su/onlyfans/user/<username>
 [optional]
-npx coomer-downloader --u https://coomer.su/onlyfans/user/<username> --dir <directory>
+--dir <directory>
+--media <video|image|all>
 ```
 
 ```
