@@ -62,12 +62,9 @@ export async function downloadFiles(data, downloadDir) {
 			process.stdout.write(`\rDownloading files: ${index + 1}/${data.length}`);
 
 			if (fs.existsSync(filePath)) {
-				console.log("op");
 				if (!isImage(name)) {
-					console.log("here");
 					await resumeDownload(src, filePath);
 				}
-				console.log("end");
 				continue;
 			}
 
