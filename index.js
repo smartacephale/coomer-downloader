@@ -33,6 +33,7 @@ const isImage = (name) =>
 
 const isVideo = (name) =>
     /\.(mp4|avi|mov|mkv|webm|flv|wmv|mpeg|mpg|3gp)$/i.test(name);
+
 const testMediaType = (name, type) =>
     type === "all" ? true : type === "image" ? !isVideo(name) : !isImage(name);
 
@@ -89,8 +90,6 @@ async function getUserFiles(user, typeFilter) {
         const title = p.title.match(/\w+/g)?.join(" ") || "";
         const date = p.published.replace(/T/, " ");
         const datentitle = `${date} ${title}`.trim();
-
-        // if (p.user !== user.name) continue; // ignore reposts?
 
         const postFiles = [...p.attachments, p.file]
             .filter((f) => f.path)
