@@ -1,7 +1,11 @@
-import fetch from "node-fetch";
 import fs from "node:fs";
 import path from "node:path";
+import util from "node:util";
+import fetch from "node-fetch";
+import stream from "node:stream";
 import { isImage } from "./utils.js";
+
+const pipeline = util.promisify(stream.pipeline);
 
 async function resumeDownload(url, outputFile) {
 	try {
@@ -18,7 +22,7 @@ async function resumeDownload(url, outputFile) {
 			},
 		});
 
-		if (!response.ok && response.status !== 416) {
+		if (!response.ok && response.status !== 416) { // 416 is full
 			throw new Error(`HTTP error! status: ${response.status}`);
 		}
 
@@ -34,18 +38,16 @@ async function resumeDownload(url, outputFile) {
 		if (match) {
 			const start = Number.parseInt(match[1]);
 			const end = Number.parseInt(match[2]);
-			console.log(
-				`Resumed download: bytes ${start}-${end} of ${url} to ${outputFile}`,
-			);
+			// console.log(
+			// 	`Resumed download: bytes ${start}-${end} of ${url} to ${outputFile}`,
+			// );
+
+			process.stdout.write(`\rResumed download: ${end/start|0}% of ${outputFile}`);
 		} else {
 			// console.warn("Could not parse Content-Range header.");
 		}
 
-		await new Promise((resolve, reject) => {
-			response.body.pipe(fileStream);
-			response.body.on("error", reject);
-			fileStream.on("finish", resolve);
-		});
+		await pipeline(response.body, fileStream);
 	} catch (error) {
 		console.error(`Error resuming download: ${error}`);
 	}
@@ -76,11 +78,7 @@ export async function downloadFiles(data, downloadDir) {
 
 			const fileStream = fs.createWriteStream(filePath);
 
-			await new Promise((resolve, reject) => {
-				response.body.pipe(fileStream);
-				response.body.on("error", reject);
-				fileStream.on("finish", resolve);
-			});
+			await pipeline(response.body, fileStream);
 		} catch (error) {
 			console.error(`\nError downloading ${name}:`, error.message);
 		}
