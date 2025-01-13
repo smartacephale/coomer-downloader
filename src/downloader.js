@@ -18,7 +18,7 @@ async function resumeDownload(url, outputFile) {
 			},
 		});
 
-		if (!response.ok) {
+		if (!response.ok && response.status !== 416) {
 			throw new Error(`HTTP error! status: ${response.status}`);
 		}
 
@@ -38,7 +38,7 @@ async function resumeDownload(url, outputFile) {
 				`Resumed download: bytes ${start}-${end} of ${url} to ${outputFile}`,
 			);
 		} else {
-			console.warn("Could not parse Content-Range header.");
+			// console.warn("Could not parse Content-Range header.");
 		}
 
 		await new Promise((resolve, reject) => {
