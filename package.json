@@ -1,0 +1,32 @@
+{
+	"name": "coomer-downloader",
+	"version": "1.0.0",
+	"author": "smartacephal",
+	"license": "MIT",
+	"description": "downloads images/videos from user posts",
+	"keywords": [
+		"downloader",
+		"scraper",
+		"nsfw",
+		"fetch",
+		"coomer",
+		"kemono"
+	],
+	"repository": "github:smartacephale/coomer-downloader",
+	"main": "index.js",
+	"type": "module",
+	"scripts": {
+		"start": "node ./index.js"
+	},
+	"bin": {
+		"coomer-downloader": "./index.js"
+	},
+	"bugs": {
+		"url": "https://github.com/smartacephale/coomer-downloader",
+		"email": "atm.mormon@protonmail.com"
+	},
+	"dependencies": {
+		"node-fetch": "^3.3.2",
+		"yargs": "^17.7.2"
+	}
+}
