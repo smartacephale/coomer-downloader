@@ -7,9 +7,12 @@ import { isImage } from './utils.js';
 
 const pipeline = util.promisify(stream.pipeline);
 
-async function resumeDownload(url, outputFile, attempts = 2) {
+async function downloadFile(url, outputFile, attempts = 2) {
   try {
-    let existingFileSize = (await fs.promises.stat(outputFile)).size || 0;
+    let existingFileSize = 0;
+    if (fs.existsSync(outputFile)) {
+      existingFileSize = (await fs.promises.stat(outputFile)).size || 0;
+    }
 
     const headers = { Range: `bytes=${existingFileSize}-` };
     const response = await fetch(url, { headers });
@@ -23,11 +26,11 @@ async function resumeDownload(url, outputFile, attempts = 2) {
     }
 
     const fileStream = fs.createWriteStream(outputFile, { flags: 'a' });
-    const totalBytes = parseInt(response.headers.get('Content-Length'));
+    const totalBytes =
+      parseInt(response.headers.get('Content-Length')) + existingFileSize;
 
-    if (existingFileSize < totalBytes) {
+    if (totalBytes > existingFileSize) {
       const progress = (n) => (n / (totalBytes / 100)).toFixed(2);
-
       const fname = outputFile.slice(outputFile.length - 70, outputFile.length);
 
       const progressStream = new stream.Transform({
@@ -45,7 +48,7 @@ async function resumeDownload(url, outputFile, attempts = 2) {
     if (attempts < 1) {
       console.error(`Error resuming download: ${error}`);
     } else {
-      await resumeDownload(url, outputFile, attempts - 1);
+      await downloadFile(url, outputFile, attempts - 1);
     }
   }
 }
@@ -60,22 +63,9 @@ export async function downloadFiles(data, downloadDir) {
     try {
       process.stdout.write(`\rDownloading files: ${index + 1}/${data.length}`);
 
-      if (fs.existsSync(filePath)) {
-        if (!isImage(name)) {
-          await resumeDownload(src, filePath);
-        }
-        continue;
-      }
+      if (fs.existsSync(filePath) && isImage(name)) continue;
 
-      const response = await fetch(src);
-      if (!response.ok) {
-        console.error(`\nFailed to download ${src}: ${response.statusText}`);
-        continue;
-      }
-
-      const fileStream = fs.createWriteStream(filePath);
-
-      await pipeline(response.body, fileStream);
+      await downloadFile(src, filePath);
     } catch (error) {
       console.error(`\nError downloading ${name}:`, error.message);
     }
