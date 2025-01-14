@@ -32,8 +32,11 @@ async function resumeDownload(url, outputFile, attempts = 2) {
 
     await pipeline(response.body, fileStream);
   } catch (error) {
-    if (attempts < 1) console.error(`Error resuming download: ${error}`);
-    await resumeDownload(url, outputFile, attempts - 1);
+    if (attempts < 1) {
+      console.error(`Error resuming download: ${error}`);
+    } else {
+      await resumeDownload(url, outputFile, attempts - 1);
+    }
   }
 }
 
