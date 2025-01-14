@@ -9,7 +9,7 @@ const pipeline = util.promisify(stream.pipeline);
 
 async function resumeDownload(url, outputFile, attempts = 2) {
   try {
-    const existingFileSize = (await fs.promises.stat(outputFile)).size || 0;
+    let existingFileSize = (await fs.promises.stat(outputFile)).size || 0;
 
     const headers = { Range: `bytes=${existingFileSize}-` };
     const response = await fetch(url, { headers });
@@ -26,11 +26,21 @@ async function resumeDownload(url, outputFile, attempts = 2) {
     const totalBytes = parseInt(response.headers.get('Content-Length'));
 
     if (existingFileSize < totalBytes) {
-      const progress = (existingFileSize / (totalBytes / 100)) | 0;
-      process.stdout.write(`\rResumed download: ${progress}% of ${outputFile}`);
-    }
+      const progress = (n) => (n / (totalBytes / 100)).toFixed(2);
 
-    await pipeline(response.body, fileStream);
+      const fname = outputFile.slice(outputFile.length - 70, outputFile.length);
+
+      const progressStream = new stream.Transform({
+        transform(chunk, _encoding, callback) {
+          this.push(chunk);
+          existingFileSize += chunk.length;
+          process.stdout.write(`\r${progress(existingFileSize)}% of ${fname}`);
+          callback();
+        },
+      });
+
+      await pipeline(response.body, progressStream, fileStream);
+    }
   } catch (error) {
     if (attempts < 1) {
       console.error(`Error resuming download: ${error}`);
@@ -70,5 +80,4 @@ export async function downloadFiles(data, downloadDir) {
       console.error(`\nError downloading ${name}:`, error.message);
     }
   }
-  console.log('\n');
 }
