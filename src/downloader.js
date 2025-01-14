@@ -11,11 +11,8 @@ async function resumeDownload(url, outputFile, attempts = 2) {
   try {
     const existingFileSize = (await fs.promises.stat(outputFile)).size || 0;
 
-    const response = await fetch(url, {
-      headers: {
-        Range: `bytes=${existingFileSize}-`,
-      },
-    });
+    const headers = { Range: `bytes=${existingFileSize}-` };
+    const response = await fetch(url, { headers });
 
     if (!response.ok && response.status !== 416) {
       throw new Error(`HTTP error! status: ${response.status}`);
