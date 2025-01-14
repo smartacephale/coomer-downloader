@@ -11,6 +11,7 @@ async function downloadFile(url, outputFile, attempts = 2) {
   try {
     let existingFileSize = 0;
     if (fs.existsSync(outputFile)) {
+      if (isImage(outputFile)) return;
       existingFileSize = (await fs.promises.stat(outputFile)).size || 0;
     }
 
@@ -62,9 +63,6 @@ export async function downloadFiles(data, downloadDir) {
     const filePath = path.join(downloadDir, name);
     try {
       process.stdout.write(`\rDownloading files: ${index + 1}/${data.length}`);
-
-      if (fs.existsSync(filePath) && isImage(name)) continue;
-
       await downloadFile(src, filePath);
     } catch (error) {
       console.error(`\nError downloading ${name}:`, error.message);
