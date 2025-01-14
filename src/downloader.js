@@ -7,7 +7,7 @@ import { isImage } from './utils.js';
 
 const pipeline = util.promisify(stream.pipeline);
 
-async function resumeDownload(url, outputFile) {
+async function resumeDownload(url, outputFile, attempts = 2) {
   try {
     const existingFileSize = (await fs.promises.stat(outputFile)).size || 0;
 
@@ -26,22 +26,17 @@ async function resumeDownload(url, outputFile) {
     }
 
     const fileStream = fs.createWriteStream(outputFile, { flags: 'a' });
-    
-    const contentRange = response.headers.get('Content-Range');
-    const match = contentRange.match(/bytes (\d+)-(\d+)\/(\d+)/);
+    const totalBytes = parseInt(response.headers.get('Content-Length'));
 
-    if (match) {
-      const start = Number.parseInt(match[1]);
-      const end = Number.parseInt(match[2]);
-
-      process.stdout.write(
-        `\rResumed download: ${(end / start) | 0}% of ${outputFile}`,
-      );
+    if (existingFileSize < totalBytes) {
+      const progress = (existingFileSize / (totalBytes / 100)) | 0;
+      process.stdout.write(`\rResumed download: ${progress}% of ${outputFile}`);
     }
 
     await pipeline(response.body, fileStream);
   } catch (error) {
-    console.error(`Error resuming download: ${error}`);
+    if (attempts < 1) console.error(`Error resuming download: ${error}`);
+    await resumeDownload(url, outputFile, attempts - 1);
   }
 }
 
