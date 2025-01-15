@@ -3,7 +3,7 @@
 _For reddit content script parsing nsfw.xxx aggregator._
 
 ### Features
-* script keeps track of downloaded files and continue resume downloading if it's crashed. 
+* script keeps track of downloaded files and resume downloading if it's crashed. 
 
 ### Installation:
 ```
