@@ -8,14 +8,12 @@ import { MultiBar } from 'cli-progress';
 
 const pipeline = util.promisify(stream.pipeline);
 
-const multibar = new MultiBar(
-  {
-    clearOnComplete: true,
-    autopadding: true,
-    hideCursor: true,
-    format: '{percentage}% | {filename} | {value}/{total}{size}',
-  }
-);
+const multibar = new MultiBar({
+  clearOnComplete: true,
+  autopadding: true,
+  hideCursor: true,
+  format: '{percentage}% | {filename} | {value}/{total}{size}',
+});
 
 async function downloadFile(url, outputFile, attempts = 2) {
   try {
@@ -37,11 +35,12 @@ async function downloadFile(url, outputFile, attempts = 2) {
     }
 
     const fileStream = fs.createWriteStream(outputFile, { flags: 'a' });
-    const totalBytes =
-      parseInt(response.headers.get('Content-Length')) + existingFileSize;
 
-    if (totalBytes > existingFileSize) {
-      const bar = multibar.create(b2mb(totalBytes), b2mb(existingFileSize));
+    const restFileSize = parseInt(response.headers.get('Content-Length'));
+    const totalFileSize = restFileSize + existingFileSize;
+
+    if (totalFileSize > existingFileSize) {
+      const bar = multibar.create(b2mb(totalFileSize), b2mb(existingFileSize));
       const filename = outputFile.slice(-40);
 
       const progressStream = new stream.Transform({
