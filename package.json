@@ -1,9 +1,9 @@
 {
 	"name": "coomer-downloader",
-	"version": "1.2.1",
+	"version": "2.0.0",
 	"author": "smartacephal",
 	"license": "MIT",
-	"description": "Downloads images/videos from Coomer/Kemono user posts",
+	"description": "Downloads images/videos from Coomer/Kemono/Reddit-NSFW user posts",
 	"keywords": [
 		"downloader",
 		"cli",
@@ -12,7 +12,9 @@
 		"nsfw",
 		"simpcity",
 		"coomer",
-		"kemono"
+		"kemono",
+		"reddit",
+		"nsfw.xxx"
 	],
 	"repository": "github:smartacephale/coomer-downloader",
 	"main": "index.js",
@@ -28,6 +30,7 @@
 		"email": "atm.mormon@protonmail.com"
 	},
 	"dependencies": {
+		"cheerio": "^1.0.0",
 		"cli-progress": "^3.12.0",
 		"node-fetch": "^3.3.2",
 		"yargs": "^17.7.2"

@@ -1,5 +1,5 @@
 import fetch from 'node-fetch';
-import { testMediaType } from './utils.js';
+import { testMediaType } from './../utils.js';
 
 const userProfileAPI = ({ domain, service, id }) =>
   `${domain}/api/v1/${service}/user/${id}/profile`;
@@ -42,7 +42,7 @@ export async function getUserFiles(user, typeFilter) {
   return files;
 }
 
-export async function parseUser(url) {
+async function parseUser(url) {
   const [_, domain, service, id] = url.match(
     /(https:\/\/\w+\.\w+)\/(\w+)\/user\/([\w|\.|-]+)/,
   );
@@ -53,4 +53,11 @@ export async function parseUser(url) {
   );
 
   return { domain, service, id, name };
+}
+
+export async function getCoomerData(url, mediaType) {
+  const user = await parseUser(url);
+  const dirName = `${user.name}-${user.service}`;
+  const files = await getUserFiles(user, mediaType);
+  return { dirName, files };
 }

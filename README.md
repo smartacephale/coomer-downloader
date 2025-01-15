@@ -1,13 +1,28 @@
-## Coomer/Kemono Downloader
+## Coomer/Kemono/Reddit-NSFW Downloader
 
-Download contents of Coomer/Kemono user.
+_For reddit content script parsing nsfw.xxx aggregator._
 
-How to use:
+### Features
+* script keeps track of downloaded files and continue resume downloading if it's crashed. 
 
+### Installation:
 ```
 npm install -g coomer-downloader
+```
+
+### How to use:
+
+* #### COOMER/KEMONO: 
+```
 npx coomer-downloader --u https://coomer.su/onlyfans/user/<username>
-[optional]
+```
+* #### REDDIT:
+```
+npx coomer-downloader --u u/<username>
+```
+
+### Options:
+```
 --dir <directory>
 --media <video|image|all>
 ```
