@@ -6,3 +6,5 @@ export const isVideo = (name) =>
 
 export const testMediaType = (name, type) =>
   type === 'all' ? true : type === 'image' ? isImage(name) : isVideo(name);
+
+export const b2mb = b => Number.parseFloat((b/1048576).toFixed(2));

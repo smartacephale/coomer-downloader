@@ -7,7 +7,7 @@ import { argumentHander } from './src/args-handler.js';
 
 async function run() {
   const { url, dir, media } = argumentHander();
-  
+
   const user = await parseUser(url);
   const userDir = `${user.name}-${user.service}`;
   const downloadDir =
@@ -16,10 +16,10 @@ async function run() {
       : path.join(os.homedir(), path.join(dir, userDir));
 
   const files = await getUserFiles(user, media);
-  console.log(files.length, 'files found');
-  
+  console.log(' ', files.length, 'files found');
+
   await downloadFiles(files, downloadDir);
-  
+
   console.log('\n');
 }
 
