@@ -14,10 +14,10 @@ async function run() {
 
   const downloadDir =
     dir === './'
-      ? path.resolve(dir, userDir)
+      ? path.resolve(dir, dirName)
       : path.join(os.homedir(), path.join(dir, dirName));
 
-  await downloadFiles(files, downloadDir);
+  await downloadFiles(files, downloadDir, url);
 
   console.log('\n');
 }

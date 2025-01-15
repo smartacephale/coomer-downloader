@@ -1,9 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import util from 'node:util';
-import fetch from 'node-fetch';
 import stream from 'node:stream';
-import { isImage, b2mb } from './utils.js';
+import { isImage, b2mb, fetch } from './utils.js';
 import { MultiBar } from 'cli-progress';
 
 const pipeline = util.promisify(stream.pipeline);
@@ -15,7 +14,7 @@ const multibar = new MultiBar({
   format: '{percentage}% | {filename} | {value}/{total}{size}',
 });
 
-async function downloadFile(url, outputFile, attempts = 2) {
+async function downloadFile(url, outputFile, referer, attempts = 2) {
   try {
     let existingFileSize = 0;
     if (fs.existsSync(outputFile)) {
@@ -23,7 +22,13 @@ async function downloadFile(url, outputFile, attempts = 2) {
       existingFileSize = (await fs.promises.stat(outputFile)).size || 0;
     }
 
-    const headers = { Range: `bytes=${existingFileSize}-` };
+    const headers = {
+      Range: `bytes=${existingFileSize}-`,
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      Referer: referer,
+    };
+
     const response = await fetch(url, { headers });
 
     if (!response.ok && response.status !== 416) {
@@ -64,7 +69,7 @@ async function downloadFile(url, outputFile, attempts = 2) {
   }
 }
 
-export async function downloadFiles(data, downloadDir) {
+export async function downloadFiles(data, downloadDir, referer) {
   if (!fs.existsSync(downloadDir)) {
     fs.mkdirSync(downloadDir, { recursive: true });
   }
@@ -75,7 +80,7 @@ export async function downloadFiles(data, downloadDir) {
     const filePath = path.join(downloadDir, name);
     try {
       bar.update(index + 1, { filename: 'Downloaded files', size: '' });
-      await downloadFile(src, filePath);
+      await downloadFile(src, filePath, referer);
     } catch (error) {
       console.error(`\nError downloading ${name}:`, error.message);
     }
