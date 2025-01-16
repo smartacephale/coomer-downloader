@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import util from 'node:util';
 import stream from 'node:stream';
-import { isImage, b2mb, fetch } from './utils.js';
+import { isImage, b2mb, fetch, UA } from './utils.js';
 import { MultiBar } from 'cli-progress';
 
 const pipeline = util.promisify(stream.pipeline);
@@ -14,7 +14,7 @@ const multibar = new MultiBar({
   format: '{percentage}% | {filename} | {value}/{total}{size}',
 });
 
-async function downloadFile(url, outputFile, referer, attempts = 2) {
+async function downloadFile(url, outputFile, Referer, attempts = 2) {
   try {
     let existingFileSize = 0;
     if (fs.existsSync(outputFile)) {
@@ -22,12 +22,9 @@ async function downloadFile(url, outputFile, referer, attempts = 2) {
       existingFileSize = (await fs.promises.stat(outputFile)).size || 0;
     }
 
-    const headers = {
-      Range: `bytes=${existingFileSize}-`,
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      Referer: referer,
-    };
+    const Range = `bytes=${existingFileSize}-`;
+
+    const headers = { Range, Referer, ...UA };
 
     const response = await fetch(url, { headers });
 
