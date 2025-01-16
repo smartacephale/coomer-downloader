@@ -1,4 +1,4 @@
-## Coomer/Kemono/Reddit-NSFW Downloader
+## Coomer / Kemono / Bunkr / Reddit-NSFW Downloader
 
 _For reddit content script parsing nsfw.xxx aggregator._
 
@@ -15,6 +15,10 @@ npm install -g coomer-downloader
 * #### COOMER/KEMONO: 
 ```
 npx coomer-downloader --u https://coomer.su/onlyfans/user/<username>
+```
+* #### BUNKR: 
+```
+npx coomer-downloader --u https://bunkr.sk/a/<ID>
 ```
 * #### REDDIT:
 ```
