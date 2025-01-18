@@ -1,7 +1,10 @@
 {
-  "name": "coomer-downloader",
-  "version": "2.0.6",
+  "name": "@acephale-green-party/coomer-downloader",
+  "version": "2.0.7",
   "author": "smartacephal",
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "MIT",
   "description": "Downloads images/videos from Coomer/Kemono/Reddit-NSFW user posts",
   "keywords": [
