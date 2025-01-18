@@ -2,10 +2,6 @@
   "name": "@acephale-green-party/coomer-downloader",
   "version": "2.0.8",
   "author": "smartacephal",
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://npm.pkg.github.com"
-  },
   "license": "MIT",
   "description": "Downloads images/videos from Coomer/Kemono/Reddit-NSFW user posts",
   "keywords": [
