@@ -1,41 +1,41 @@
 {
-	"name": "coomer-downloader",
-	"version": "2.0.4",
-	"author": "smartacephal",
-	"license": "MIT",
-	"description": "Downloads images/videos from Coomer/Kemono/Reddit-NSFW user posts",
-	"keywords": [
-		"downloader",
-		"cli",
-		"scraper",
-		"fetch",
-		"nsfw",
-		"simpcity",
-		"coomer",
-		"kemono",
-		"reddit",
-		"nsfw.xxx",
-        "bunkr"
-	],
-	"repository": "github:smartacephale/coomer-downloader",
-	"main": "index.js",
-	"type": "module",
-	"scripts": {
-		"start": "node ./index.js",
-        "test": "echo \"Error: no test specified\" && exit 1"
-	},
-	"bin": {
-		"coomer-downloader": "./index.js"
-	},
-	"bugs": {
-		"url": "https://github.com/smartacephale/coomer-downloader",
-		"email": "atm.mormon@protonmail.com"
-	},
-	"dependencies": {
-		"cheerio": "^1.0.0",
-		"cli-progress": "^3.12.0",
-		"fetch-cookie": "^3.1.0",
-		"node-fetch": "^3.3.2",
-		"yargs": "^17.7.2"
-	}
+  "name": "coomer-downloader",
+  "version": "2.0.5",
+  "author": "smartacephal",
+  "license": "MIT",
+  "description": "Downloads images/videos from Coomer/Kemono/Reddit-NSFW user posts",
+  "keywords": [
+    "downloader",
+    "cli",
+    "scraper",
+    "fetch",
+    "nsfw",
+    "simpcity",
+    "coomer",
+    "kemono",
+    "reddit",
+    "nsfw.xxx",
+    "bunkr"
+  ],
+  "repository": "github:smartacephale/coomer-downloader",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node ./index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "coomer-downloader": "./index.js"
+  },
+  "bugs": {
+    "url": "https://github.com/smartacephale/coomer-downloader",
+    "email": "atm.mormon@protonmail.com"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "cli-progress": "^3.12.0",
+    "fetch-cookie": "^3.1.0",
+    "node-fetch": "^3.3.2",
+    "yargs": "^17.7.2"
+  }
 }
