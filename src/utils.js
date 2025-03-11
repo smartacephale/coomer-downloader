@@ -14,6 +14,22 @@ export const testMediaType = (name, type) =>
 
 export const b2mb = (b) => Number.parseFloat((b / 1048576).toFixed(2));
 
+export function filterKeywords(files, include, exclude) {
+  const incl = include.toLowerCase().trim();
+  const excl = exclude.toLowerCase().trim();
+  return files.filter((f) => {
+    const text = f.name
+      .concat(' ')
+      .concat(f?.content || '')
+      .toLocaleLowerCase();
+    f.content = "";
+    return (
+      (!excl.length || !text.includes(excl)) &&
+      (!incl.length || text.includes(incl))
+    );
+  });
+}
+
 export const UA = {
   'User-Agent':
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',

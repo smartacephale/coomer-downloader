@@ -23,6 +23,7 @@ export async function getUserFiles(user, typeFilter) {
 
   for (const p of userPosts) {
     const title = p.title.match(/\w+/g)?.join(' ') || '';
+    const content = p.content;
     const date = p.published.replace(/T/, ' ');
     const datentitle = `${date} ${title}`.trim();
 
@@ -33,7 +34,7 @@ export async function getUserFiles(user, typeFilter) {
         const ext = f.name.split('.').pop();
         const name = `${datentitle} ${i + 1}.${ext}`;
         const src = `${user.domain}/${f.path}`;
-        return { name, src };
+        return { name, src, content };
       });
 
     files.push(...postFiles);

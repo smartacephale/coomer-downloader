@@ -5,6 +5,7 @@ import process from 'node:process';
 import { downloadFiles } from './src/downloader.js';
 import { apiHandler } from './src/api/index.js';
 import { argumentHander } from './src/args-handler.js';
+import { filterKeywords } from './src/utils.js';
 
 async function run() {
   const { url, dir, media, include, exclude } = argumentHander();
@@ -18,11 +19,7 @@ async function run() {
       ? path.resolve(dir, dirName)
       : path.join(os.homedir(), path.join(dir, dirName));
 
-  const filteredFiles = files.filter(
-    (f) =>
-      (!exclude.length || !f.name.toLowerCase().includes(exclude)) &&
-      (!include.length || f.name.toLowerCase().includes(include)),
-  );
+  const filteredFiles = filterKeywords(files, include, exclude);
 
   await downloadFiles(filteredFiles, downloadDir, url);
 
