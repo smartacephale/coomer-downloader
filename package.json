@@ -2,10 +2,6 @@
   "name": "coomer-downloader",
   "version": "2.1.0",
   "author": "smartacephal",
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://npm.pkg.github.com"
-  },
   "license": "MIT",
   "description": "Downloads images/videos from Coomer/Kemono/Reddit-NSFW user posts",
   "keywords": [
