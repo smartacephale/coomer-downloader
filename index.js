@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import os from 'node:os';
 import path from 'node:path';
+import process from 'node:process';
 import { downloadFiles } from './src/downloader.js';
 import { apiHandler } from './src/api/index.js';
 import { argumentHander } from './src/args-handler.js';
@@ -19,7 +20,7 @@ async function run() {
 
   await downloadFiles(files, downloadDir, url);
 
-  console.log('\n');
+  process.kill(process.pid, 'SIGINT');
 }
 
 run();
