@@ -15,7 +15,7 @@ const multibar = new MultiBar({
   format: '{percentage}% | {filename} | {value}/{total}{size}',
 });
 
-async function downloadFile(url, outputFile, Referer, attempts = 2) {
+async function downloadFile(url, outputFile, headerData, attempts = 2) {
   try {
     let existingFileSize = 0;
     if (fs.existsSync(outputFile)) {
@@ -25,7 +25,7 @@ async function downloadFile(url, outputFile, Referer, attempts = 2) {
 
     const Range = `bytes=${existingFileSize}-`;
 
-    const headers = { Range, Referer, ...UA };
+    const headers = { Range, ...headerData, ...UA };
 
     const response = await fetch(url, { headers });
 
@@ -62,12 +62,12 @@ async function downloadFile(url, outputFile, Referer, attempts = 2) {
     if (attempts < 1) {
       console.error(`${error} downloading`, url);
     } else {
-      await downloadFile(url, outputFile, Referer, attempts - 1);
+      await downloadFile(url, outputFile, headerData, attempts - 1);
     }
   }
 }
 
-export async function downloadFiles(data, downloadDir, referer) {
+export async function downloadFiles(data, downloadDir, headerData) {
   if (!fs.existsSync(downloadDir)) {
     fs.mkdirSync(downloadDir, { recursive: true });
   }
@@ -78,7 +78,7 @@ export async function downloadFiles(data, downloadDir, referer) {
     const filePath = path.join(downloadDir, name);
     try {
       bar.update(index + 1, { filename: 'Downloaded files', size: '' });
-      await downloadFile(src, filePath, referer);
+      await downloadFile(src, filePath, headerData);
     } catch (error) {
       console.error(`\nError downloading ${name}:`, error.message);
     }

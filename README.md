@@ -1,4 +1,4 @@
-## Coomer / Kemono / Bunkr / Reddit-NSFW Downloader
+## Coomer / Kemono / Bunkr / GoFile / Reddit-NSFW Downloader
 
 _For reddit content script parsing nsfw.xxx aggregator._
 
@@ -18,7 +18,11 @@ npx coomer-downloader --u https://coomer.su/onlyfans/user/<username>
 ```
 * #### BUNKR: 
 ```
-npx coomer-downloader --u https://bunkr.sk/a/<ID> --exclude superboobs
+npx coomer-downloader --u https://bunkr.sk/a/<ID>
+```
+* #### GoFile: 
+```
+npx coomer-downloader --u https://gofile.io/d/<ID>
 ```
 * #### REDDIT:
 ```
@@ -26,7 +30,7 @@ npx coomer-downloader --u u/<username>
 ```
 * #### You can also download any file with it as a curl:
 ```
-npx coomer-downloader --u https://random.com/file.mp4 --include megatits
+npx coomer-downloader --u https://random.com/file.mp4
 ```
 
 ### Options:

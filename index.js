@@ -10,7 +10,7 @@ import { filterKeywords } from './src/utils.js';
 async function run() {
   const { url, dir, media, include, exclude } = argumentHander();
 
-  const { dirName, files } = await apiHandler(url, media);
+  const { dirName, files, headerData = {} } = await apiHandler(url, media);
 
   console.log(' ', files.length, 'files found');
 
@@ -21,13 +21,12 @@ async function run() {
 
   const filteredFiles = filterKeywords(files, include, exclude);
 
-  await downloadFiles(filteredFiles, downloadDir, url);
+  await downloadFiles(filteredFiles, downloadDir, {
+    Referer: url,
+    ...headerData,
+  });
 
   process.kill(process.pid, 'SIGINT');
 }
-
-process.on('uncaughtException', (err) => {
-  console.error('Unhandled exception:', err);
-});
 
 run();

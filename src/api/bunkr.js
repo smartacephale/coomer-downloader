@@ -51,11 +51,11 @@ async function getGalleryFiles(url, mediaType) {
     data.push(res);
   }
 
-  return { title, data: data.filter((f) => testMediaType(f.name, mediaType)) };
+  return { title, files: data.filter((f) => testMediaType(f.name, mediaType)) };
 }
 
 export async function getBunkrData(url, mediaType) {
-  const { data: files, title } = await getGalleryFiles(url, mediaType);
+  const { files, title } = await getGalleryFiles(url, mediaType);
   const dirName = `${title.split('|')[0].trim()}-bunkr`;
   return { dirName, files };
 }
