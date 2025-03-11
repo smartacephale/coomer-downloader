@@ -29,4 +29,8 @@ async function run() {
   process.kill(process.pid, 'SIGINT');
 }
 
+process.on('uncaughtException', (err) => {
+  console.error('Unhandled exception:', err);
+});
+
 run();

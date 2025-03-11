@@ -60,9 +60,9 @@ async function downloadFile(url, outputFile, Referer, attempts = 2) {
     }
   } catch (error) {
     if (attempts < 1) {
-      console.error(`${error}`);
+      console.error(`${error} downloading`, url);
     } else {
-      await downloadFile(url, outputFile, attempts - 1);
+      await downloadFile(url, outputFile, Referer, attempts - 1);
     }
   }
 }
