@@ -1,6 +1,6 @@
 {
-  "name": "@acephale-green-party/coomer-downloader",
-  "version": "2.0.8",
+  "name": "coomer-downloader",
+  "version": "2.1.0",
   "author": "smartacephal",
   "publishConfig": {
     "access": "public",

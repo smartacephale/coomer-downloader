@@ -24,3 +24,4 @@ dist/
 build/
 
 # Package-lock files
+.npmrc
