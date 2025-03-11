@@ -25,3 +25,4 @@ build/
 
 # Package-lock files
 .npmrc
+package-lock.json
