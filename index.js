@@ -7,7 +7,7 @@ import { apiHandler } from './src/api/index.js';
 import { argumentHander } from './src/args-handler.js';
 
 async function run() {
-  const { url, dir, media } = argumentHander();
+  const { url, dir, media, include, exclude } = argumentHander();
 
   const { dirName, files } = await apiHandler(url, media);
 
@@ -18,7 +18,13 @@ async function run() {
       ? path.resolve(dir, dirName)
       : path.join(os.homedir(), path.join(dir, dirName));
 
-  await downloadFiles(files, downloadDir, url);
+  const filteredFiles = files.filter(
+    (f) =>
+      (!exclude.length || !f.name.toLowerCase().includes(exclude)) &&
+      (!include.length || f.name.toLowerCase().includes(include)),
+  );
+
+  await downloadFiles(filteredFiles, downloadDir, url);
 
   process.kill(process.pid, 'SIGINT');
 }

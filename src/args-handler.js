@@ -6,7 +6,8 @@ export function argumentHander() {
     .option('url', {
       alias: 'u',
       type: 'string',
-      description: 'Coomer/Kemono/Bunkr URL, u/<reddit-username> or any direct file url',
+      description:
+        'Coomer/Kemono/Bunkr URL, u/<reddit-username> or any direct file url',
       demandOption: true,
     })
     .option('dir', {
@@ -20,6 +21,16 @@ export function argumentHander() {
       default: 'all',
       description:
         "Download media type: 'video', 'image', or 'all', 'all' is default",
+    })
+    .option('include', {
+      type: 'string',
+      default: '',
+      description: 'filter files with names which includes keywords',
+    })
+    .option('exclude', {
+      type: 'string',
+      default: '',
+      description: 'filter files with names which excludes keywords',
     })
     .help()
     .alias('help', 'h').argv;

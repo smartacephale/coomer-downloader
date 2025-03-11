@@ -18,7 +18,7 @@ npx coomer-downloader --u https://coomer.su/onlyfans/user/<username>
 ```
 * #### BUNKR: 
 ```
-npx coomer-downloader --u https://bunkr.sk/a/<ID>
+npx coomer-downloader --u https://bunkr.sk/a/<ID> --exclude superboobs
 ```
 * #### REDDIT:
 ```
@@ -26,13 +26,17 @@ npx coomer-downloader --u u/<username>
 ```
 * #### You can also download any file with it as a curl:
 ```
-npx coomer-downloader --u https://random.com/file.mp4
+npx coomer-downloader --u https://random.com/file.mp4 --include megatits
 ```
 
 ### Options:
 ```
 --dir <directory>
 --media <video|image|all>
+
+# include/exclude filters files by name
+--include <keyword1>
+--exclude <keyword2>
 ```
 
 ```
