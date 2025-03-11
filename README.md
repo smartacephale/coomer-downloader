@@ -24,6 +24,10 @@ npx coomer-downloader --u https://bunkr.sk/a/<ID>
 ```
 npx coomer-downloader --u u/<username>
 ```
+* #### You can also download any file with it as a curl:
+```
+npx coomer-downloader --u https://random.com/file.mp4
+```
 
 ### Options:
 ```

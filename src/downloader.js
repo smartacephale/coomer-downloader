@@ -9,6 +9,7 @@ const pipeline = util.promisify(stream.pipeline);
 
 const multibar = new MultiBar({
   clearOnComplete: true,
+  gracefulExit: true,
   autopadding: true,
   hideCursor: true,
   format: '{percentage}% | {filename} | {value}/{total}{size}',
@@ -82,5 +83,6 @@ export async function downloadFiles(data, downloadDir, referer) {
       console.error(`\nError downloading ${name}:`, error.message);
     }
   }
+
   bar.stop();
 }

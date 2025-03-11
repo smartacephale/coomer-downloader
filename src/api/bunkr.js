@@ -14,7 +14,6 @@ function decryptEncryptedUrl(encryptionData) {
   const secretKey = `SECRET_KEY_${Math.floor(encryptionData.timestamp / 3600)}`;
   const encryptedUrlBuffer = Buffer.from(encryptionData.url, 'base64');
   const secretKeyBuffer = Buffer.from(secretKey, 'utf-8');
-
   return Array.from(encryptedUrlBuffer)
     .map((byte, i) =>
       String.fromCharCode(byte ^ secretKeyBuffer[i % secretKeyBuffer.length]),
@@ -22,40 +21,41 @@ function decryptEncryptedUrl(encryptionData) {
     .join('');
 }
 
-async function getPageFile(url) {
+async function getFileData(url, name) {
   const slug = url.split('/').pop();
   const encryptionData = await getEncryptionData(slug);
   const src = decryptEncryptedUrl(encryptionData);
-  return { name: slug, src };
+  return { name, src };
 }
 
 async function getGalleryFiles(url, mediaType) {
   const data = [];
-
   const page = await fetch(url).then((r) => r.text());
   const $ = cheerio.load(page);
   const title = $('title').text();
-
   const url_ = new URL(url);
 
-  const fileLinks = Array.from($('a').map((_, e) => $(e).attr('href')))
-    .filter((a) => /\/f\/\w+/.test(a))
-    .map((a) => `${url_.origin}${a}`);
+  const fileNames = Array.from(
+    $('div[title]').map((_, e) => $(e).attr('title')),
+  );
 
-  for (const fileLink of fileLinks) {
-    const res = await getPageFile(fileLink);
+  const files = Array.from($('a').map((_, e) => $(e).attr('href')))
+    .filter((a) => /\/f\/\w+/.test(a))
+    .map((a, i) => ({
+      src: `${url_.origin}${a}`,
+      name: fileNames[i] || src.split('/').pop(),
+    }));
+
+  for (const { name, src } of files) {
+    const res = await getFileData(src, name);
     data.push(res);
   }
 
-  return {
-    title,
-    data: data.filter((f) => testMediaType(f.name, mediaType)),
-  };
+  return { title, data: data.filter((f) => testMediaType(f.name, mediaType)) };
 }
 
 export async function getBunkrData(url, mediaType) {
   const { data: files, title } = await getGalleryFiles(url, mediaType);
   const dirName = `${title.split('|')[0].trim()}-bunkr`;
-  console.log({ url, mediaType, dirName, title, files });
   return { dirName, files };
 }

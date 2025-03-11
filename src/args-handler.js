@@ -6,7 +6,7 @@ export function argumentHander() {
     .option('url', {
       alias: 'u',
       type: 'string',
-      description: 'Coomer/Kemono/Bunkr URL or u/<reddit-username>',
+      description: 'Coomer/Kemono/Bunkr URL, u/<reddit-username> or any direct file url',
       demandOption: true,
     })
     .option('dir', {
