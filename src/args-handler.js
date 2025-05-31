@@ -7,7 +7,7 @@ export function argumentHander() {
       alias: 'u',
       type: 'string',
       description:
-        'Coomer/Kemono/Bunkr URL, u/<reddit-username> or any direct file url',
+        'Coomer/Kemono/Bunkr/GoFile, u/<reddit-username> or plain file url',
       demandOption: true,
     })
     .option('dir', {

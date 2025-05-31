@@ -4,6 +4,7 @@ import util from 'node:util';
 import stream from 'node:stream';
 import { isImage, b2mb, fetch, UA } from './utils.js';
 import { MultiBar } from 'cli-progress';
+import { tryFixCoomerUrl } from './api/coomer-api.js';
 
 const pipeline = util.promisify(stream.pipeline);
 
@@ -15,7 +16,7 @@ const multibar = new MultiBar({
   format: '{percentage}% | {filename} | {value}/{total}{size}',
 });
 
-async function downloadFile(url, outputFile, headerData, attempts = 2) {
+async function downloadFile(url, outputFile, headerData, attempts = 5) {
   try {
     let existingFileSize = 0;
     if (fs.existsSync(outputFile)) {
@@ -29,8 +30,14 @@ async function downloadFile(url, outputFile, headerData, attempts = 2) {
 
     const response = await fetch(url, { headers });
 
-    if (!response.ok && response.status !== 416) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (!response.ok) {
+      if (/coomer|kemono/.test(response.url)) {
+        url = tryFixCoomerUrl(response.url);
+      }
+
+      if (response.status !== 416) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
     }
 
     if (!response.headers.get('Content-Range')) {
@@ -60,7 +67,8 @@ async function downloadFile(url, outputFile, headerData, attempts = 2) {
     }
   } catch (error) {
     if (attempts < 1) {
-      console.error(`${error} downloading`, url);
+      console.error(url)
+      console.error(error);
     } else {
       await downloadFile(url, outputFile, headerData, attempts - 1);
     }
