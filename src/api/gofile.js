@@ -1,4 +1,4 @@
-import { fetch, testMediaType } from './../utils.js';
+import { fetch, testMediaType } from './../utils/index.js';
 
 async function getToken() {
   const response = await fetch('https://api.gofile.io/accounts', {

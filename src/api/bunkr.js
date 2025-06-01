@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import { testMediaType, fetch } from './../utils.js';
+import { testMediaType, fetch } from './../utils/index.js';
 
 async function getEncryptionData(slug) {
   const response = await fetch('https://bunkr.cr/api/vs', {

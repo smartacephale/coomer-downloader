@@ -1,13 +1,16 @@
 import fetch from 'node-fetch';
-import { testMediaType } from './../utils.js';
+import { isImage, testMediaType } from '../utils/index.js';
 
 const SERVERS = ['n1', 'n2', 'n3', 'n4'];
 
-export function tryFixCoomerUrl(url) {
-  const server = url.match(/n\d./)[0].slice(0,2);
+export function tryFixCoomerUrl(url, attempts) {
+  if (attempts < 2 && isImage(url)) {
+    return url.replace(/\/data\//, '/thumbnail/data/').replace(/n\d\./, 'img.');
+  }
+  const server = url.match(/n\d\./)[0].slice(0, 2);
   const i = SERVERS.indexOf(server);
   if (i !== -1) {
-    const newServer = SERVERS[(i+1)%SERVERS.length];
+    const newServer = SERVERS[(i + 1) % SERVERS.length];
     return url.replace(/n\d./, `${newServer}.`);
   }
   return url;

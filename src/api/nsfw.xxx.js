@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
-import { testMediaType } from './../utils.js';
+import { testMediaType } from './../utils/index.js';
 
 const userPostsURL = (n, user) =>
   `https://nsfw.xxx/page/${n}?nsfw[]=0&types[]=image&types[]=video&types[]=gallery&slider=1&jsload=1&user=${user}&_=${Date.now()}`;

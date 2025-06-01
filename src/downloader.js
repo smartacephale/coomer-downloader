@@ -1,12 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import util from 'node:util';
-import stream from 'node:stream';
-import { isImage, b2mb, fetch, UA } from './utils.js';
+import { Transform } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+import { b2mb, fetchByteRange, DEFAULT_HEADERS, getFileSize } from './utils/index.js';
 import { MultiBar } from 'cli-progress';
 import { tryFixCoomerUrl } from './api/coomer-api.js';
-
-const pipeline = util.promisify(stream.pipeline);
 
 const multibar = new MultiBar({
   clearOnComplete: true,
@@ -16,44 +14,34 @@ const multibar = new MultiBar({
   format: '{percentage}% | {filename} | {value}/{total}{size}',
 });
 
-async function downloadFile(url, outputFile, headerData, attempts = 5) {
+async function downloadFile(url, outputFile, attempts = 7) {
+  let response;
+
   try {
-    let existingFileSize = 0;
-    if (fs.existsSync(outputFile)) {
-      if (isImage(outputFile)) return;
-      existingFileSize = (await fs.promises.stat(outputFile)).size || 0;
+    let existingFileSize = await getFileSize(outputFile);
+
+    response = await fetchByteRange(url, existingFileSize);
+
+    if (!response.ok && response.status !== 416) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const Range = `bytes=${existingFileSize}-`;
+    const contentLength = parseInt(response.headers.get('Content-Length'));
 
-    const headers = { Range, ...headerData, ...UA };
-
-    const response = await fetch(url, { headers });
-
-    if (!response.ok) {
-      if (/coomer|kemono/.test(response.url)) {
-        url = tryFixCoomerUrl(response.url);
-      }
-
-      if (response.status !== 416) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-    }
-
-    if (!response.headers.get('Content-Range')) {
-      throw new Error('Server does not support byte ranges.');
+    if (!response.headers.get('Content-Range') && existingFileSize > 0) {
+      return;
     }
 
     const fileStream = fs.createWriteStream(outputFile, { flags: 'a' });
 
-    const restFileSize = parseInt(response.headers.get('Content-Length'));
+    const restFileSize = contentLength;
     const totalFileSize = restFileSize + existingFileSize;
 
     if (totalFileSize > existingFileSize) {
       const bar = multibar.create(b2mb(totalFileSize), b2mb(existingFileSize));
       const filename = outputFile.slice(-40);
 
-      const progressStream = new stream.Transform({
+      const progressStream = new Transform({
         transform(chunk, _encoding, callback) {
           this.push(chunk);
           existingFileSize += chunk.length;
@@ -67,18 +55,24 @@ async function downloadFile(url, outputFile, headerData, attempts = 5) {
     }
   } catch (error) {
     if (attempts < 1) {
-      console.error(url)
+      console.error(url);
       console.error(error);
     } else {
-      await downloadFile(url, outputFile, headerData, attempts - 1);
+      let newUrl = url;
+      if (/coomer|kemono/.test(response.url)) {
+        newUrl = tryFixCoomerUrl(response.url, attempts);
+      }
+      await downloadFile(newUrl, outputFile, attempts - 1);
     }
   }
 }
 
-export async function downloadFiles(data, downloadDir, headerData) {
+export async function downloadFiles(data, downloadDir, headers) {
   if (!fs.existsSync(downloadDir)) {
     fs.mkdirSync(downloadDir, { recursive: true });
   }
+
+  Object.keys(headers).forEach((k) => DEFAULT_HEADERS.set(k, headers[k]));
 
   const bar = multibar.create(data.length, 0);
 
@@ -86,7 +80,7 @@ export async function downloadFiles(data, downloadDir, headerData) {
     const filePath = path.join(downloadDir, name);
     try {
       bar.update(index + 1, { filename: 'Downloaded files', size: '' });
-      await downloadFile(src, filePath, headerData);
+      await downloadFile(src, filePath);
     } catch (error) {
       console.error(`\nError downloading ${name}:`, error.message);
     }

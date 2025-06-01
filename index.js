@@ -5,7 +5,7 @@ import process from 'node:process';
 import { downloadFiles } from './src/downloader.js';
 import { apiHandler } from './src/api/index.js';
 import { argumentHander } from './src/args-handler.js';
-import { filterKeywords } from './src/utils.js';
+import { filterKeywords } from './src/utils/index.js';
 
 async function run() {
   const { url, dir, media, include, exclude } = argumentHander();
