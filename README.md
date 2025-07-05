@@ -27,7 +27,7 @@ _Reddit content parsed with nsfw.xxx_
 ```
 npx coomer-downloader --u u/<username>
 ```
-* #### You can also download any file with it as a curl:
+* #### Download files like curl:
 ```
 npx coomer-downloader --u https://random.com/file.mp4
 ```
