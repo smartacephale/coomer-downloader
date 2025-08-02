@@ -12,7 +12,7 @@ npm install -g coomer-downloader
 
 * #### COOMER/KEMONO: 
 ```
-npx coomer-downloader --u https://coomer.su/onlyfans/user/<username>
+npx coomer-downloader --u https://coomer.st/onlyfans/user/<username>
 ```
 * #### BUNKR: 
 ```
