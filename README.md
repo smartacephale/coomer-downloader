@@ -12,7 +12,7 @@ npm install -g coomer-downloader
 
 * #### COOMER/KEMONO: 
 ```
-npx coomer-downloader --u https://coomer.su/onlyfans/user/<username>
+npx coomer-downloader --u https://coomer.st/onlyfans/user/<username>
 ```
 * #### BUNKR: 
 ```
@@ -27,7 +27,7 @@ _Reddit content parsed with nsfw.xxx_
 ```
 npx coomer-downloader --u u/<username>
 ```
-* #### You can also download any file with it as a curl:
+* #### Download files like curl:
 ```
 npx coomer-downloader --u https://random.com/file.mp4
 ```
