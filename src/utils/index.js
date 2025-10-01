@@ -6,9 +6,17 @@ export { TransformWithTimeout } from './streams.js';
 export const fetch = makeFetchCookie(nodeFetch);
 
 export const DEFAULT_HEADERS = new Headers({
+  'accept': 'application/json', 
+  'accept': 'text/css',
   'User-Agent':
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 });
+
+export function fetch_(url) {
+  const requestHeaders = new Headers(DEFAULT_HEADERS);
+  const headers = Object.fromEntries(requestHeaders.entries());
+  return fetch(url, { headers });
+}
 
 export function fetchByteRange(url, existingFileSize) {
   const requestHeaders = new Headers(DEFAULT_HEADERS);
@@ -35,11 +43,11 @@ export function filterKeywords(files, include, exclude) {
   const incl = include.split(',').map((x) => x.toLowerCase().trim());
   const excl = exclude.split(',').map((x) => x.toLowerCase().trim());
 
-  const isValid = text => incl.some(e => text.includes(e)) && 
+  const isValid = text => incl.some(e => text.includes(e)) &&
     (!exclude.trim().length || excl.every((e) => !text.includes(e)));
 
   return files
-    .filter(f => { 
+    .filter(f => {
       const text = `${f.name || ""} ${f.content || ""}`.toLowerCase();
       return isValid(text);
     });

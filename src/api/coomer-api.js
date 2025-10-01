@@ -1,5 +1,4 @@
-import fetch from 'node-fetch';
-import { isImage, testMediaType } from '../utils/index.js';
+import { fetch_, isImage, testMediaType } from '../utils/index.js';
 
 const SERVERS = ['n1', 'n2', 'n3', 'n4'];
 
@@ -20,14 +19,14 @@ const userProfileAPI = ({ domain, service, id }) =>
   `${domain}/api/v1/${service}/user/${id}/profile`;
 
 const userPostsAPI = (user, offset) =>
-  `${user.domain}/api/v1/${user.service}/user/${user.id}?o=${offset}`;
+  `${user.domain}/api/v1/${user.service}/user/${user.id}/posts?o=${offset}`;
 
 export async function getUserFiles(user, typeFilter) {
   const userPosts = [];
 
   const offset = 50;
   for (let i = 0; i < 1000; i++) {
-    const posts = await fetch(userPostsAPI(user, offset * i)).then((r) =>
+    const posts = await fetch_(userPostsAPI(user, offset * i)).then((r) =>
       r.json(),
     );
     userPosts.push(...posts);
@@ -64,7 +63,7 @@ async function parseUser(url) {
   );
   if (!domain || !service || !id) console.error('Invalid URL', url);
 
-  const { name } = await fetch(userProfileAPI({ domain, service, id })).then(
+  const { name } = await fetch_(userProfileAPI({ domain, service, id })).then(
     (r) => r.json(),
   );
 
