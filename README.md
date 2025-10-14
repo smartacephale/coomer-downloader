@@ -36,6 +36,7 @@ npx coomer-downloader --u https://random.com/file.mp4
 ```
 --dir <directory>
 --media <video|image|all>
+--skip <number>
 
 # include/exclude filters files by name
 --include <keyword1>
