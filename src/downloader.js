@@ -54,6 +54,8 @@ async function downloadFile(url, outputFile, attempts = 7) {
       multibar.remove(bar);
     }
   } catch (error) {
+    console.log(url, outputFile);
+    console.error(response);
     if (attempts < 1) {
       console.error(url);
       console.error(error);
@@ -80,9 +82,10 @@ export async function downloadFiles(data, downloadDir, headers) {
     const filePath = path.join(downloadDir, name);
     try {
       bar.update(index + 1, { filename: 'Downloaded files', size: '' });
-      await downloadFile(src, filePath);
+      await downloadFile(src.replace(/[\/]+/g, '/'), filePath);
     } catch (error) {
       console.error(`\nError downloading ${name}:`, error.message);
+      console.error(src);
     }
   }
 

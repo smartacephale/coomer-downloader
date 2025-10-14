@@ -51,6 +51,11 @@ async function getGalleryFiles(url, mediaType) {
     data.push(res);
   }
 
+  if (files.length === 0) {
+    const singleFile = await getFileData(url, title);
+    data.push(singleFile);
+  }
+
   return { title, files: data.filter((f) => testMediaType(f.name, mediaType)) };
 }
 
