@@ -8,7 +8,7 @@ import { argumentHander } from './src/args-handler.js';
 import { filterKeywords } from './src/utils/index.js';
 
 async function run() {
-  const { url, dir, media, include, exclude } = argumentHander();
+  const { url, dir, media, include, exclude, skip = 0 } = argumentHander();
 
   const { dirName, files, headerData = {} } = await apiHandler(url, media);
 
@@ -19,7 +19,9 @@ async function run() {
       ? path.resolve(dir, dirName)
       : path.join(os.homedir(), path.join(dir, dirName));
 
-  const filteredFiles = filterKeywords(files, include, exclude);
+  const filteredFiles = filterKeywords(files, include, exclude).slice(skip);
+
+  if (skip) console.log(skip, 'files skipped');
 
   await downloadFiles(filteredFiles, downloadDir, {
     Referer: url,

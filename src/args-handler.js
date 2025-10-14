@@ -32,6 +32,11 @@ export function argumentHander() {
       default: '',
       description: 'filter files with names which excludes keywords',
     })
+    .option('skip', {
+      type: 'string',
+      default: '',
+      description: 'skips N files in download queue',
+    })
     .help()
     .alias('help', 'h').argv;
 }
