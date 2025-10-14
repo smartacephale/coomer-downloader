@@ -1,4 +1,4 @@
-## Coomer / Kemono / Bunkr / GoFile / Reddit-NSFW Downloader
+## Coomer / Kemono / Bunkr / GoFile / Reddit-NSFW Gallery Downloader
 
 ### Features
 * script keeps track of downloaded files and resume downloading if it's crashed. 
