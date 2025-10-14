@@ -3,9 +3,13 @@
 ### Features
 * script keeps track of downloaded files and resume downloading if it's crashed. 
 
-### Installation:
+### Install:
 ```
 npm install -g coomer-downloader
+```
+### Update:
+```
+ npm update -g coomer-downloader
 ```
 
 ### How to use:

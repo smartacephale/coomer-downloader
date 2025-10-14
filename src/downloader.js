@@ -54,8 +54,6 @@ async function downloadFile(url, outputFile, attempts = 7) {
       multibar.remove(bar);
     }
   } catch (error) {
-    console.log(url, outputFile);
-    console.error(response);
     if (attempts < 1) {
       console.error(url);
       console.error(error);
