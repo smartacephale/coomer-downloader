@@ -35,6 +35,12 @@ async function getGalleryFiles(url, mediaType) {
   const title = $('title').text();
   const url_ = new URL(url);
 
+  if ((new URL(url).pathname).startsWith('/f/')) {
+    const singleFile = await getFileData(url, title);
+    data.push(singleFile);
+    return { title, files: data.filter((f) => testMediaType(f.name, mediaType)) };
+  }
+
   const fileNames = Array.from(
     $('div[title]').map((_, e) => $(e).attr('title')),
   );
@@ -49,11 +55,6 @@ async function getGalleryFiles(url, mediaType) {
   for (const { name, src } of files) {
     const res = await getFileData(src, name);
     data.push(res);
-  }
-
-  if (files.length === 0) {
-    const singleFile = await getFileData(url, title);
-    data.push(singleFile);
   }
 
   return { title, files: data.filter((f) => testMediaType(f.name, mediaType)) };
