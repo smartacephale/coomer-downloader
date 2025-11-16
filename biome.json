@@ -1,14 +1,20 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.8.3/schema.json",
-  "organizeImports": {
+  "$schema": "https://biomejs.dev/schemas/2.2.6/schema.json",
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on",
+        "useSortedKeys": "off"
+      }
+    },
     "enabled": true
   },
   "formatter": {
     "enabled": true,
-    "indentWidth": 2,
     "indentStyle": "space",
-    "lineWidth": 80,
-    "lineEnding": "lf"
+    "indentWidth": 2,
+    "lineEnding": "lf",
+    "lineWidth": 100
   },
   "javascript": {
     "formatter": {
@@ -19,13 +25,16 @@
   "linter": {
     "enabled": true,
     "rules": {
+      "complexity": {
+        "noForEach": "off",
+        "noStaticOnlyClass": "off"
+      },
+      "correctness": {
+        "useParseIntRadix": "off"
+      },
       "recommended": true,
       "style": {
         "useNumberNamespace": "off"
-      },
-      "complexity": {
-        "noStaticOnlyClass": "off",
-        "noForEach": "off"
       },
       "suspicious": {
         "noRedundantUseStrict": "off"

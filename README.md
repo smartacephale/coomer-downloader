@@ -1,5 +1,8 @@
 ## Coomer / Kemono / Bunkr / GoFile / Reddit-NSFW Gallery Downloader
 
+[![NPM](https://nodei.co/npm/coomer-downloader.svg?color=lightgrey)](https://www.npmjs.com/package/coomer-downloader)
+
+
 ### Features
 * script keeps track of downloaded files and resume downloading if it's crashed. 
 

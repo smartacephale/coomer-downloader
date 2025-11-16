@@ -1,34 +1,36 @@
 import * as cheerio from 'cheerio';
-import { testMediaType, fetch } from './../utils/index.js';
+import { fetch } from 'undici';
+import type { ApiResult, MediaType } from '../types/index.js';
+import { testMediaType } from '../utils/index.js';
 
-async function getEncryptionData(slug) {
+type EncData = { url: string; timestamp: number };
+
+async function getEncryptionData(slug: string): Promise<EncData> {
   const response = await fetch('https://bunkr.cr/api/vs', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ slug: slug }),
   });
-  return await response.json();
+  return (await response.json()) as EncData;
 }
 
-function decryptEncryptedUrl(encryptionData) {
+function decryptEncryptedUrl(encryptionData: EncData) {
   const secretKey = `SECRET_KEY_${Math.floor(encryptionData.timestamp / 3600)}`;
   const encryptedUrlBuffer = Buffer.from(encryptionData.url, 'base64');
   const secretKeyBuffer = Buffer.from(secretKey, 'utf-8');
   return Array.from(encryptedUrlBuffer)
-    .map((byte, i) =>
-      String.fromCharCode(byte ^ secretKeyBuffer[i % secretKeyBuffer.length]),
-    )
+    .map((byte, i) => String.fromCharCode(byte ^ secretKeyBuffer[i % secretKeyBuffer.length]))
     .join('');
 }
 
-async function getFileData(url, name) {
-  const slug = url.split('/').pop();
+async function getFileData(url: string, name: string) {
+  const slug = url.split('/').pop() as string;
   const encryptionData = await getEncryptionData(slug);
   const src = decryptEncryptedUrl(encryptionData);
-  return { name, src };
+  return { name, url: src };
 }
 
-async function getGalleryFiles(url, mediaType) {
+async function getGalleryFiles(url: string, mediaType: MediaType) {
   const data = [];
   const page = await fetch(url).then((r) => r.text());
   const $ = cheerio.load(page);
@@ -42,26 +44,24 @@ async function getGalleryFiles(url, mediaType) {
     return { title, files: data.filter((f) => testMediaType(f.name, mediaType)) };
   }
 
-  const fileNames = Array.from(
-    $('div[title]').map((_, e) => $(e).attr('title')),
-  );
+  const fileNames = Array.from($('div[title]').map((_, e) => $(e).attr('title')));
 
   const files = Array.from($('a').map((_, e) => $(e).attr('href')))
     .filter((a) => /\/f\/\w+/.test(a))
     .map((a, i) => ({
-      src: `${url_.origin}${a}`,
-      name: fileNames[i] || src.split('/').pop(),
+      url: `${url_.origin}${a}`,
+      name: fileNames[i] || (url.split('/').pop() as string),
     }));
 
-  for (const { name, src } of files) {
-    const res = await getFileData(src, name);
+  for (const { name, url } of files) {
+    const res = await getFileData(url, name);
     data.push(res);
   }
 
   return { title, files: data.filter((f) => testMediaType(f.name, mediaType)) };
 }
 
-export async function getBunkrData(url, mediaType) {
+export async function getBunkrData(url: string, mediaType: MediaType): Promise<ApiResult> {
   const { files, title } = await getGalleryFiles(url, mediaType);
   const dirName = `${title.split('|')[0].trim()}-bunkr`;
   return { dirName, files };

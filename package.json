@@ -1,9 +1,9 @@
 {
   "name": "coomer-downloader",
-  "version": "2.6.5",
+  "version": "3.0.0",
   "author": "smartacephal",
   "license": "MIT",
-  "description": "Downloads images/videos from Coomer/Kemono/Reddit-NSFW user posts",
+  "description": "Downloads images/videos from Coomer/Kemono, Bunkr, GoFile, Reddit-NSFW user posts",
   "keywords": [
     "downloader",
     "cli",
@@ -15,30 +15,39 @@
     "kemono",
     "reddit",
     "nsfw.xxx",
-    "bunkr"
+    "bunkr",
+    "gofile"
   ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/smartacephale/coomer-downloader.git"
   },
-  "main": "index.js",
+  "main": "./src/index.ts",
   "type": "module",
   "scripts": {
-    "start": "node ./index.js",
+    "start": "tsx ./src/index.ts",
     "test": "echo \"Error: no test specified\""
   },
   "bin": {
-    "coomer-downloader": "index.js"
+    "coomer-downloader": "./src/index.ts"
   },
   "bugs": {
     "url": "https://github.com/smartacephale/coomer-downloader",
     "email": "atm.mormon@protonmail.com"
   },
   "dependencies": {
-    "cheerio": "^1.0.0",
+    "undici": "^6.22.0",
+    "http-cookie-agent": "^6.0.0",
+    "tough-cookie": "5.1.2",
+    "cheerio": "1.1.0",
     "cli-progress": "^3.12.0",
-    "fetch-cookie": "^3.1.0",
-    "node-fetch": "^3.3.2",
+    "rxjs": "^7.8.2",
     "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@types/cli-progress": "^3.11.6",
+    "@types/node": "^24.10.0",
+    "@types/yargs": "^17.0.34",
+    "tsx": "^4.20.6"
   }
 }
