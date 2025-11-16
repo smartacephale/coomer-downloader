@@ -1,6 +1,6 @@
 {
   "name": "coomer-downloader",
-  "version": "3.0.7",
+  "version": "3.0.8",
   "author": "smartacephal",
   "license": "MIT",
   "description": "Downloads images/videos from Coomer/Kemono, Bunkr, GoFile, Reddit-NSFW user posts",
@@ -26,8 +26,7 @@
   "type": "module",
   "scripts": {
     "start": "tsx ./src/index.ts",
-    "test": "echo \"Error: no test specified\"",
-    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/index.js"
+    "build": "npx build.js"
   },
   "bin": {
     "coomer-downloader": "./dist/index.js"
