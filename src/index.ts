@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env node
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';

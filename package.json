@@ -1,6 +1,6 @@
 {
   "name": "coomer-downloader",
-  "version": "3.0.0",
+  "version": "3.0.6",
   "author": "smartacephal",
   "license": "MIT",
   "description": "Downloads images/videos from Coomer/Kemono, Bunkr, GoFile, Reddit-NSFW user posts",
@@ -26,28 +26,30 @@
   "type": "module",
   "scripts": {
     "start": "tsx ./src/index.ts",
-    "test": "echo \"Error: no test specified\""
+    "test": "echo \"Error: no test specified\"",
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/index.js"
   },
   "bin": {
-    "coomer-downloader": "./src/index.ts"
+    "coomer-downloader": "./dist/index.js"
   },
   "bugs": {
     "url": "https://github.com/smartacephale/coomer-downloader",
     "email": "atm.mormon@protonmail.com"
   },
   "dependencies": {
-    "undici": "^6.22.0",
-    "http-cookie-agent": "^6.0.0",
-    "tough-cookie": "5.1.2",
     "cheerio": "1.1.0",
     "cli-progress": "^3.12.0",
+    "http-cookie-agent": "^6.0.0",
     "rxjs": "^7.8.2",
+    "tough-cookie": "5.1.2",
+    "undici": "^6.22.0",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
     "@types/cli-progress": "^3.11.6",
     "@types/node": "^24.10.0",
     "@types/yargs": "^17.0.34",
+    "esbuild": "^0.27.0",
     "tsx": "^4.20.6"
   }
 }
