@@ -20,10 +20,6 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Build output
-dist/
-build/
-
 # Package-lock files
 .npmrc
 package-lock.json
