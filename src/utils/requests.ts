@@ -1,6 +1,12 @@
 import { CookieAgent } from 'http-cookie-agent/undici';
 import { CookieJar } from 'tough-cookie';
-import { fetch, getGlobalDispatcher, interceptors, setGlobalDispatcher } from 'undici';
+import {
+  fetch,
+  getGlobalDispatcher,
+  interceptors,
+  type RetryHandler,
+  setGlobalDispatcher,
+} from 'undici';
 
 function setCookieJarDispatcher() {
   const jar = new CookieJar();
@@ -12,18 +18,8 @@ function setCookieJarDispatcher() {
 
 setCookieJarDispatcher();
 
-export function setRetryDispatcher(maxRetries = 3) {
-  setGlobalDispatcher(
-    getGlobalDispatcher().compose(
-      interceptors.retry({
-        maxRetries,
-        // minTimeout: 1000,
-        // maxTimeout: 10000,
-        timeoutFactor: 2,
-        retryAfter: true,
-      }),
-    ),
-  );
+export function setRetryDispatcher(options: RetryHandler.RetryOptions) {
+  setGlobalDispatcher(getGlobalDispatcher().compose(interceptors.retry(options)));
 }
 
 export const HeadersDefault = new Headers({

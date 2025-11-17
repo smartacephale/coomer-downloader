@@ -6,23 +6,22 @@ import { Subject } from 'rxjs';
 import { tryFixCoomerUrl } from '../api/coomer-api';
 import type { DownloaderSubject, File } from '../types';
 import { getFileSize, mkdir } from './files';
-import { fetchByteRange } from './requests';
+import { promiseRetry } from './promise';
+import { fetchByteRange, setRetryDispatcher } from './requests';
 import { Timer } from './timer';
 
 export const subject = new Subject<DownloaderSubject>();
 
-const CHUNK_TIMEOUT = 30_000;
-const DOWNLOAD_ATTEMPTS = 7;
+const CHUNK_TIMEOUT = 30;
+const CHUNK_FETCH_RETRIES = 5;
+const FETCH_RETRIES = 7;
 
-async function downloadStream(file: File, stream: Readable): Promise<void> {
+async function fetchStream(file: File, stream: Readable): Promise<void> {
   subject.next({ type: 'CHUNK_DOWNLOADING_STARTED', file });
 
-  const fileStream = fs.createWriteStream(file.filepath as string, { flags: 'a' });
+  const { timer, signal } = Timer.withSignal(CHUNK_TIMEOUT);
 
-  const controller = new AbortController();
-  const timer = new Timer(CHUNK_TIMEOUT, () => {
-    controller.abort('Stream is stuck.');
-  }).start();
+  const fileStream = fs.createWriteStream(file.filepath as string, { flags: 'a' });
 
   const progressStream = new Transform({
     transform(chunk, _encoding, callback) {
@@ -34,7 +33,10 @@ async function downloadStream(file: File, stream: Readable): Promise<void> {
     },
   });
 
-  await pipeline(stream, progressStream, fileStream, { signal: controller.signal });
+  await pipeline(stream, progressStream, fileStream, { signal }).catch((reason) => {
+    fileStream.close();
+    throw reason;
+  });
   timer.stop();
   subject.next({ type: 'FILE_DOWNLOADING_FINISHED' });
 }
@@ -47,42 +49,45 @@ function handleFetchError(error: Error, file: File, attempts: number): void {
   throw error;
 }
 
-async function downloadFile(file: File, attempts = DOWNLOAD_ATTEMPTS): Promise<void> {
-  const downloadedOld = file.downloaded || 0;
-  try {
-    file.downloaded = await getFileSize(file.filepath as string);
+async function downloadFile(file: File): Promise<void> {
+  file.downloaded = await getFileSize(file.filepath as string);
 
-    const response = await fetchByteRange(file.url, file.downloaded).catch((error) =>
-      handleFetchError(error, file, --attempts),
+  // setRetryDispatcher({
+  //   maxRetries: 100,
+  //   minTimeout: 2_000,
+  //   maxTimeout: 10_000,
+  //   retry: (...args) => {
+  //     console.log('opapa');
+  //     console.log('\n\n', { ...args });
+  //   },
+  // });
+  const response = await fetchByteRange(file.url, file.downloaded);
+
+  if (!response?.ok && response?.status !== 416) {
+    throw new Error(`HTTP error! status: ${response?.status}`);
+  }
+
+  const contentLength = response.headers.get('Content-Length') as string;
+
+  if (!contentLength && file.downloaded > 0) {
+    return;
+  }
+
+  const restFileSize = parseInt(contentLength);
+  file.size = restFileSize + file.downloaded;
+
+  if (file.size > file.downloaded && response.body) {
+    const stream = Readable.fromWeb(response.body);
+
+    const sizeOld = file.downloaded;
+
+    promiseRetry(
+      async () => {
+        await fetchStream(file, stream);
+      },
+      () => sizeOld === file.downloaded,
+      CHUNK_FETCH_RETRIES,
     );
-
-    if (!response?.ok && response?.status !== 416) {
-      throw new Error(`HTTP error! status: ${response?.status}`);
-    }
-
-    const contentLength = response.headers.get('Content-Length') as string;
-
-    if (!contentLength && file.downloaded > 0) {
-      return;
-    }
-
-    const restFileSize = parseInt(contentLength);
-    file.size = restFileSize + file.downloaded;
-
-    if (file.size > file.downloaded && response.body) {
-      const stream = Readable.fromWeb(response.body);
-      await downloadStream(file, stream);
-    }
-  } catch (error) {
-    if (downloadedOld < (file.downloaded || 0)) {
-      attempts = DOWNLOAD_ATTEMPTS;
-    }
-    if (attempts < 1) {
-      console.error(file.url);
-      console.error(error);
-    } else {
-      await downloadFile(file, attempts - 1);
-    }
   }
 }
 

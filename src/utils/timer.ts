@@ -26,4 +26,19 @@ export class Timer {
     this.start();
     return this;
   }
+
+  static withSignal(timeout?: number) {
+    const controller = new AbortController();
+
+    const callback = () => {
+      controller.abort();
+    };
+
+    const timer = new Timer(timeout, callback).start();
+
+    return {
+      timer,
+      signal: controller.signal,
+    };
+  }
 }
