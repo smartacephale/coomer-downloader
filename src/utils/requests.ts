@@ -1,12 +1,6 @@
 import { CookieAgent } from 'http-cookie-agent/undici';
 import { CookieJar } from 'tough-cookie';
-import {
-  fetch,
-  getGlobalDispatcher,
-  interceptors,
-  type RetryHandler,
-  setGlobalDispatcher,
-} from 'undici';
+import { fetch, interceptors, setGlobalDispatcher } from 'undici';
 
 function setCookieJarDispatcher() {
   const jar = new CookieJar();
@@ -17,10 +11,6 @@ function setCookieJarDispatcher() {
 }
 
 setCookieJarDispatcher();
-
-export function setRetryDispatcher(options: RetryHandler.RetryOptions) {
-  setGlobalDispatcher(getGlobalDispatcher().compose(interceptors.retry(options)));
-}
 
 export const HeadersDefault = new Headers({
   accept: 'application/json, text/css',
@@ -34,7 +24,7 @@ export function setGlobalHeaders(headers: Record<string, string>) {
   });
 }
 
-export function fetch_(url: string) {
+export function fetchWithGlobalHeader(url: string) {
   const requestHeaders = new Headers(HeadersDefault);
   return fetch(url, { headers: requestHeaders });
 }

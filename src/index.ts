@@ -15,7 +15,7 @@ async function run() {
   const downloadDir =
     dir === './' ? path.resolve(dir, dirName) : path.join(os.homedir(), path.join(dir, dirName));
 
-  const filteredFiles = filterKeywords(files, include, exclude).slice(skip);
+  const filteredFiles = filterKeywords(files.slice(skip), include, exclude);
 
   console.table([
     {
@@ -29,6 +29,7 @@ async function run() {
   setGlobalHeaders({ Referer: url });
 
   createMultibar();
+
   await downloadFiles(filteredFiles, downloadDir);
 
   process.kill(process.pid, 'SIGINT');

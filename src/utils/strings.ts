@@ -16,6 +16,6 @@ export function formatNameStdout(pathname: string) {
   const consoleWidth = process.stdout.columns;
   const width = Math.max((consoleWidth / 2) | 0, 40);
   if (name.length < width) return name.trim();
-  const result = `${name.slice(0,width-15)} ... ${name.slice(-10)}`.replace(/ +/g, ' ');
+  const result = `${name.slice(0, width - 15)} ... ${name.slice(-10)}`.replace(/ +/g, ' ');
   return result;
 }
