@@ -8,16 +8,30 @@ export const isVideo = (name: string) =>
 export const testMediaType = (name: string, type: MediaType) =>
   type === 'all' ? true : type === 'image' ? isImage(name) : isVideo(name);
 
+function includesAllWords(str: string, words: string[]) {
+  if (!words.length) return true;
+  return words.every((w) => str.includes(w));
+}
+
+function includesNoWords(str: string, words: string[]) {
+  if (!words.length) return true;
+  return words.every((w) => !str.includes(w));
+}
+
+function parseQuery(query: string) {
+  return query
+    .split(',')
+    .map((x) => x.toLowerCase().trim())
+    .filter((_) => _);
+}
+
+function filterString(text: string, include: string, exclude: string): boolean {
+  return includesAllWords(text, parseQuery(include)) && includesNoWords(text, parseQuery(exclude));
+}
+
 export function filterKeywords(files: File[], include: string, exclude: string) {
-  const incl = include.split(',').map((x) => x.toLowerCase().trim());
-  const excl = exclude.split(',').map((x) => x.toLowerCase().trim());
-
-  const isValid = (text: string) =>
-    incl.some((e) => text.includes(e)) &&
-    (!exclude.trim().length || excl.every((e) => !text.includes(e)));
-
   return files.filter((f) => {
     const text = `${f.name || ''} ${f.content || ''}`.toLowerCase();
-    return isValid(text);
+    return filterString(text, include, exclude);
   });
 }

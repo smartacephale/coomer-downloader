@@ -1,5 +1,5 @@
 import type { ApiResult, File, MediaType } from '../types/index.js';
-import { fetch_, isImage, setGlobalHeaders, testMediaType } from '../utils/index.js';
+import { fetchWithGlobalHeader, isImage, setGlobalHeaders, testMediaType } from '../utils/index.js';
 
 type CoomerUser = { domain: string; service: string; id: string; name?: string };
 type CoomerUserApi = { name: string };
@@ -29,13 +29,13 @@ export function tryFixCoomerUrl(url: string, attempts: number) {
 
 async function getUserProfileAPI(user: CoomerUser): Promise<CoomerUserApi> {
   const url = `${user.domain}/api/v1/${user.service}/user/${user.id}/profile`;
-  const result = await fetch_(url).then((r) => r.json());
+  const result = await fetchWithGlobalHeader(url).then((r) => r.json());
   return result as CoomerUserApi;
 }
 
 async function getUserPostsAPI(user: CoomerUser, offset: number): Promise<CoomerPost[]> {
   const url = `${user.domain}/api/v1/${user.service}/user/${user.id}/posts?o=${offset}`;
-  const posts = await fetch_(url).then((r) => r.json());
+  const posts = await fetchWithGlobalHeader(url).then((r) => r.json());
   return posts as CoomerPost[];
 }
 

@@ -9,7 +9,10 @@ export class Timer {
   }
 
   start() {
-    this.timer = setTimeout(this.timeoutCallback, this.timeout);
+    this.timer = setTimeout(() => {
+      this.stop();
+      this.timeoutCallback();
+    }, this.timeout);
     return this;
   }
 
@@ -25,5 +28,20 @@ export class Timer {
     this.stop();
     this.start();
     return this;
+  }
+
+  static withSignal(timeout?: number, message?: string) {
+    const controller = new AbortController();
+
+    const callback = () => {
+      controller.abort(message);
+    };
+
+    const timer = new Timer(timeout, callback).start();
+
+    return {
+      timer,
+      signal: controller.signal,
+    };
   }
 }
