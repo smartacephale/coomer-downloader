@@ -1,5 +1,5 @@
 import { MultiBar, type Options, type SingleBar } from 'cli-progress';
-import { subject } from './downloader';
+import type { Downloader } from './downloader';
 import { b2mb, formatNameStdout } from './strings';
 
 const config: Options = {
@@ -10,14 +10,14 @@ const config: Options = {
   format: '{percentage}% | {filename} | {value}/{total}{size}',
 };
 
-export function createMultibar() {
+export function createMultibar(downloader: Downloader) {
   const multibar = new MultiBar(config);
   let bar: SingleBar;
   let minibar: SingleBar;
   let filename: string;
   let index = 0;
 
-  subject.subscribe({
+  downloader.subject.subscribe({
     next: ({ type, filesCount, file }) => {
       switch (type) {
         case 'FILES_DOWNLOADING_START':

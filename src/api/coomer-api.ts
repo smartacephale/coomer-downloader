@@ -1,15 +1,15 @@
-import type { ApiResult, File, MediaType } from '../types/index.js';
-import { fetchWithGlobalHeader, isImage, setGlobalHeaders, testMediaType } from '../utils/index.js';
+import { CoomerFile, CoomerFileList } from '../utils/file.js';
+import { fetchWithGlobalHeader, isImage, setGlobalHeaders } from '../utils/index.js';
 
-type CoomerUser = { domain: string; service: string; id: string; name?: string };
-type CoomerUserApi = { name: string };
-type CoomerFile = { path: string; name: string };
-type CoomerPost = {
+type CoomerAPIUser = { domain: string; service: string; id: string; name?: string };
+type CoomerAPIUserData = { name: string };
+type CoomerAPIFile = { path: string; name: string };
+type CoomerAPIPost = {
   title: string;
   content: string;
   published: string;
-  attachments: CoomerFile[];
-  file: CoomerFile;
+  attachments: CoomerAPIFile[];
+  file: CoomerAPIFile;
 };
 
 const SERVERS = ['n1', 'n2', 'n3', 'n4'];
@@ -27,19 +27,19 @@ export function tryFixCoomerUrl(url: string, attempts: number) {
   return url;
 }
 
-async function getUserProfileAPI(user: CoomerUser): Promise<CoomerUserApi> {
+async function getUserProfileData(user: CoomerAPIUser): Promise<CoomerAPIUserData> {
   const url = `${user.domain}/api/v1/${user.service}/user/${user.id}/profile`;
   const result = await fetchWithGlobalHeader(url).then((r) => r.json());
-  return result as CoomerUserApi;
+  return result as CoomerAPIUserData;
 }
 
-async function getUserPostsAPI(user: CoomerUser, offset: number): Promise<CoomerPost[]> {
+async function getUserPostsAPI(user: CoomerAPIUser, offset: number): Promise<CoomerAPIPost[]> {
   const url = `${user.domain}/api/v1/${user.service}/user/${user.id}/posts?o=${offset}`;
   const posts = await fetchWithGlobalHeader(url).then((r) => r.json());
-  return posts as CoomerPost[];
+  return posts as CoomerAPIPost[];
 }
 
-export async function getUserFiles(user: CoomerUser, mediaType: MediaType): Promise<File[]> {
+export async function getUserFiles(user: CoomerAPIUser): Promise<CoomerFileList> {
   const userPosts = [];
 
   const offset = 50;
@@ -49,7 +49,7 @@ export async function getUserFiles(user: CoomerUser, mediaType: MediaType): Prom
     if (posts.length < 50) break;
   }
 
-  const files: File[] = [];
+  const filelist = new CoomerFileList();
 
   for (const p of userPosts) {
     const title = p.title.match(/\w+/g)?.join(' ') || '';
@@ -59,35 +59,34 @@ export async function getUserFiles(user: CoomerUser, mediaType: MediaType): Prom
 
     const postFiles = [...p.attachments, p.file]
       .filter((f) => f.path)
-      .filter((f) => testMediaType(f.name, mediaType))
       .map((f, i) => {
         const ext = f.name.split('.').pop();
         const name = `${datentitle} ${i + 1}.${ext}`;
         const url = `${user.domain}/${f.path}`;
-        return { name, url, content };
+        return CoomerFile.from({ name, url, content });
       });
 
-    files.push(...postFiles);
+    filelist.files.push(...postFiles);
   }
 
-  return files;
+  return filelist;
 }
 
-async function parseUser(url: string): Promise<CoomerUser> {
+async function parseUser(url: string): Promise<CoomerAPIUser> {
   const [_, domain, service, id] = url.match(
     /(https:\/\/\w+\.\w+)\/(\w+)\/user\/([\w|.|-]+)/,
   ) as RegExpMatchArray;
   if (!domain || !service || !id) console.error('Invalid URL', url);
 
-  const { name } = await getUserProfileAPI({ domain, service, id });
+  const { name } = await getUserProfileData({ domain, service, id });
 
   return { domain, service, id, name };
 }
 
-export async function getCoomerData(url: string, mediaType: MediaType): Promise<ApiResult> {
+export async function getCoomerData(url: string): Promise<CoomerFileList> {
   setGlobalHeaders({ accept: 'text/css' });
   const user = await parseUser(url);
-  const dirName = `${user.name}-${user.service}`;
-  const files = await getUserFiles(user, mediaType);
-  return { dirName, files };
+  const filelist = await getUserFiles(user);
+  filelist.dirName = `${user.name}-${user.service}`;
+  return filelist;
 }

@@ -1,6 +1,6 @@
 import { fetch } from 'undici';
-import type { ApiResult, File, MediaType } from '../types/index.js';
-import { setGlobalHeaders, testMediaType } from '../utils/index.js';
+import { CoomerFile, CoomerFileList } from '../utils/file.js';
+import { setGlobalHeaders } from '../utils/index.js';
 
 type GoFileAPIToken = { status: string; data: { token: string } };
 type GoFileAPIFilelist = { data: { children: { link: string; name: string }[] } };
@@ -26,7 +26,11 @@ async function getWebsiteToken() {
   throw new Error('cannot get wt');
 }
 
-async function getFolderFiles(id: string, token: string, websiteToken: string): Promise<File[]> {
+async function getFolderFiles(
+  id: string,
+  token: string,
+  websiteToken: string,
+): Promise<CoomerFileList> {
   const url = `https://api.gofile.io/contents/${id}?wt=${websiteToken}&cache=true}`;
   const response = await fetch(url, {
     headers: {
@@ -39,26 +43,26 @@ async function getFolderFiles(id: string, token: string, websiteToken: string): 
   }
 
   const data = (await response.json()) as GoFileAPIFilelist;
-  const files = Object.values(data.data.children).map((f) => ({
-    url: f.link,
-    name: f.name,
-  }));
+  const files = Object.values(data.data.children).map((f) =>
+    CoomerFile.from({
+      url: f.link,
+      name: f.name,
+    }),
+  );
 
-  return files;
+  return new CoomerFileList(files);
 }
 
-export async function getGofileData(url: string, mediaType: MediaType): Promise<ApiResult> {
+export async function getGofileData(url: string): Promise<CoomerFileList> {
   const id = url.match(/gofile.io\/d\/(\w+)/)?.[1] as string;
-  const dirName = `gofile-${id}`;
 
   const token = await getToken();
   const websiteToken = await getWebsiteToken();
 
-  const files = (await getFolderFiles(id, token, websiteToken)).filter((f) =>
-    testMediaType(f.name, mediaType),
-  );
+  const filelist = await getFolderFiles(id, token, websiteToken);
+  filelist.dirName = `gofile-${id}`;
 
   setGlobalHeaders({ Cookie: `accountToken=${token}` });
 
-  return { dirName, files };
+  return filelist;
 }

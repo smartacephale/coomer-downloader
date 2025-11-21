@@ -1,6 +1,6 @@
-export { downloadFiles } from './downloader';
-export { getFileSize, mkdir } from './files';
-export { filterKeywords, isImage, isVideo, testMediaType } from './filters';
+export { Downloader } from './downloader';
+export { isImage, isVideo, testMediaType } from './filters';
+export { getFileSize, mkdir } from './io';
 export { createMultibar } from './multibar';
 export {
   fetchByteRange,

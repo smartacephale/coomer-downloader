@@ -1,28 +1,28 @@
-import type { ApiResult, MediaType } from '../types';
+import type { CoomerFileList } from '../utils/file';
 import { getBunkrData } from './bunkr';
 import { getCoomerData } from './coomer-api';
 import { getGofileData } from './gofile';
 import { getRedditData } from './nsfw.xxx';
 import { getPlainFileData } from './plain-curl';
 
-export async function apiHandler(
-  url: string,
-  mediaType: MediaType,
-): Promise<ApiResult | undefined> {
-  if (/^u\/\w+$/.test(url.trim())) {
-    return getRedditData(url, mediaType);
+export async function apiHandler(url_: string): Promise<CoomerFileList> {
+  const url = new URL(url_);
+
+  if (/^u\/\w+$/.test(url.origin)) {
+    return getRedditData(url.href);
   }
-  if (/coomer|kemono/.test(url)) {
-    return getCoomerData(url, mediaType);
+  if (/coomer|kemono/.test(url.origin)) {
+    return getCoomerData(url.href);
   }
-  if (/bunkr/.test(url)) {
-    return getBunkrData(url, mediaType);
+  if (/bunkr/.test(url.origin)) {
+    return getBunkrData(url.href);
   }
-  if (/gofile\.io/.test(url)) {
-    return getGofileData(url, mediaType);
+  if (/gofile\.io/.test(url.origin)) {
+    return getGofileData(url.href);
   }
-  if (/\.\w+/.test(url.split('/').pop() as string)) {
-    return getPlainFileData(url);
+  if (/\.\w+/.test(url.pathname)) {
+    return getPlainFileData(url.href);
   }
-  console.error('Wrong URL.');
+
+  throw Error('Invalid URL');
 }

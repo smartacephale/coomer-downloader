@@ -1,7 +1,6 @@
 import * as cheerio from 'cheerio';
 import { fetch } from 'undici';
-import type { ApiResult, MediaType } from '../types/index.js';
-import { testMediaType } from '../utils/index.js';
+import { CoomerFile, CoomerFileList } from '../utils/file';
 
 type EncData = { url: string; timestamp: number };
 
@@ -23,46 +22,46 @@ function decryptEncryptedUrl(encryptionData: EncData) {
     .join('');
 }
 
-async function getFileData(url: string, name: string) {
+async function getFileData(url: string, name: string): Promise<CoomerFile> {
   const slug = url.split('/').pop() as string;
   const encryptionData = await getEncryptionData(slug);
   const src = decryptEncryptedUrl(encryptionData);
-  return { name, url: src };
+  return CoomerFile.from({ name, url: src });
 }
 
-async function getGalleryFiles(url: string, mediaType: MediaType) {
-  const data = [];
+async function getGalleryFiles(url: string): Promise<CoomerFileList> {
+  const filelist = new CoomerFileList();
   const page = await fetch(url).then((r) => r.text());
   const $ = cheerio.load(page);
-  const title = $('title').text();
+  const dirName = $('title').text();
+  filelist.dirName = `${dirName.split('|')[0].trim()}-bunkr`;
   const url_ = new URL(url);
 
   if (url_.pathname.startsWith('/f/')) {
     const fileName = $('h1').text();
     const singleFile = await getFileData(url, fileName);
-    data.push(singleFile);
-    return { title, files: data.filter((f) => testMediaType(f.name, mediaType)) };
+    filelist.files.push(singleFile);
+    return filelist;
   }
 
   const fileNames = Array.from($('div[title]').map((_, e) => $(e).attr('title')));
 
-  const files = Array.from($('a').map((_, e) => $(e).attr('href')))
+  const data = Array.from($('a').map((_, e) => $(e).attr('href')))
     .filter((a) => /\/f\/\w+/.test(a))
     .map((a, i) => ({
       url: `${url_.origin}${a}`,
       name: fileNames[i] || (url.split('/').pop() as string),
     }));
 
-  for (const { name, url } of files) {
+  for (const { name, url } of data) {
     const res = await getFileData(url, name);
-    data.push(res);
+    filelist.files.push(res);
   }
 
-  return { title, files: data.filter((f) => testMediaType(f.name, mediaType)) };
+  return filelist;
 }
 
-export async function getBunkrData(url: string, mediaType: MediaType): Promise<ApiResult> {
-  const { files, title } = await getGalleryFiles(url, mediaType);
-  const dirName = `${title.split('|')[0].trim()}-bunkr`;
-  return { dirName, files };
+export async function getBunkrData(url: string): Promise<CoomerFileList> {
+  const filelist = await getGalleryFiles(url);
+  return filelist;
 }

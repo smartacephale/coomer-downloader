@@ -1,7 +1,6 @@
 import * as cheerio from 'cheerio';
 import { fetch } from 'undici';
-import type { ApiResult, File, MediaType } from '../types/index.js';
-import { testMediaType } from '../utils/index.js';
+import { CoomerFile, CoomerFileList } from '../utils/file';
 
 async function getUserPage(user: string, offset: number) {
   const url = `https://nsfw.xxx/page/${offset}?nsfw[]=0&types[]=image&types[]=video&types[]=gallery&slider=1&jsload=1&user=${user}&_=${Date.now()}`;
@@ -26,9 +25,9 @@ async function getUserPosts(user: string): Promise<string[]> {
   return posts;
 }
 
-async function getPostsData(posts: string[], mediaType: MediaType): Promise<File[]> {
+async function getPostsData(posts: string[]): Promise<CoomerFileList> {
   console.log('Fetching posts data...');
-  const data = [];
+  const filelist = new CoomerFileList();
   for (const post of posts) {
     const page = await fetch(post).then((r) => r.text());
     const $ = cheerio.load(page);
@@ -46,16 +45,16 @@ async function getPostsData(posts: string[], mediaType: MediaType): Promise<File
     const ext = src.split('.').pop();
     const name = `${slug}-${date}.${ext}`;
 
-    data.push({ name, url: src });
+    filelist.files.push(CoomerFile.from({ name, url: src }));
   }
 
-  return data.filter((f) => testMediaType(f.name, mediaType));
+  return filelist;
 }
 
-export async function getRedditData(url: string, mediaType: MediaType): Promise<ApiResult> {
+export async function getRedditData(url: string): Promise<CoomerFileList> {
   const user = url.match(/u\/(\w+)/)?.[1] as string;
   const posts = await getUserPosts(user);
-  const files = await getPostsData(posts, mediaType);
-  const dirName = `${user}-reddit`;
-  return { dirName, files };
+  const filelist = await getPostsData(posts);
+  filelist.dirName = `${user}-reddit`;
+  return filelist;
 }

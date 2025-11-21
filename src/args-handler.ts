@@ -1,16 +1,13 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
-export type ArgumentHandlerResult = {
-  [x: string]: unknown;
+type ArgumentHandlerResult = {
   url: string;
   dir: string;
   media: string;
   include: string;
   exclude: string;
   skip: number;
-  _: (string | number)[];
-  $0: string;
 };
 
 export function argumentHander(): ArgumentHandlerResult {
