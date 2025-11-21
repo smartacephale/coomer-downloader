@@ -11,15 +11,19 @@ export async function apiHandler(url_: string): Promise<CoomerFileList> {
   if (/^u\/\w+$/.test(url.origin)) {
     return getRedditData(url.href);
   }
+
   if (/coomer|kemono/.test(url.origin)) {
     return getCoomerData(url.href);
   }
+
   if (/bunkr/.test(url.origin)) {
     return getBunkrData(url.href);
   }
+
   if (/gofile\.io/.test(url.origin)) {
     return getGofileData(url.href);
   }
+
   if (/\.\w+/.test(url.pathname)) {
     return getPlainFileData(url.href);
   }

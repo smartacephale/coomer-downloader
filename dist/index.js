@@ -36,9 +36,24 @@ function filterString(text, include, exclude) {
   return includesAllWords(text, parseQuery(include)) && includesNoWords(text, parseQuery(exclude));
 }
 
+// src/utils/io.ts
+import fs from "node:fs";
+async function getFileSize(filepath) {
+  let size = 0;
+  if (fs.existsSync(filepath)) {
+    size = (await fs.promises.stat(filepath)).size || 0;
+  }
+  return size;
+}
+function mkdir(filepath) {
+  if (!fs.existsSync(filepath)) {
+    fs.mkdirSync(filepath, { recursive: true });
+  }
+}
+
 // src/utils/file.ts
 var CoomerFile = class _CoomerFile {
-  constructor(name, url, filepath, size, downloaded, content) {
+  constructor(name, url, filepath, size, downloaded = 0, content) {
     this.name = name;
     this.url = url;
     this.filepath = filepath;
@@ -47,6 +62,10 @@ var CoomerFile = class _CoomerFile {
     this.content = content;
   }
   state = "pause";
+  async getDownloadedSize() {
+    this.downloaded = await getFileSize(this.filepath);
+    return this;
+  }
   get textContent() {
     const text = `${this.name || ""} ${this.content || ""}`.toLowerCase();
     return text;
@@ -86,6 +105,11 @@ var CoomerFileList = class {
   skip(n) {
     this.files = this.files.slice(n);
     return this;
+  }
+  async calculateFileSizes() {
+    for (const file of this.files) {
+      await file.getDownloadedSize();
+    }
   }
 };
 
@@ -139,67 +163,6 @@ async function getBunkrData(url) {
   return filelist;
 }
 
-// src/utils/downloader.ts
-import fs2 from "node:fs";
-import { Readable, Transform } from "node:stream";
-import { pipeline } from "node:stream/promises";
-import { Subject } from "rxjs";
-
-// src/utils/io.ts
-import fs from "node:fs";
-async function getFileSize(filepath) {
-  let size = 0;
-  if (fs.existsSync(filepath)) {
-    size = (await fs.promises.stat(filepath)).size || 0;
-  }
-  return size;
-}
-function mkdir(filepath) {
-  if (!fs.existsSync(filepath)) {
-    fs.mkdirSync(filepath, { recursive: true });
-  }
-}
-
-// src/utils/promise.ts
-async function sleep(time) {
-  return new Promise((resolve) => setTimeout(resolve, time));
-}
-var PromiseRetry = class _PromiseRetry {
-  retries;
-  delay;
-  callback;
-  constructor(options) {
-    this.retries = options.retries || 3;
-    this.delay = options.delay || 1e3;
-    this.callback = options.callback;
-  }
-  async execute(fn) {
-    let retries = this.retries;
-    while (true) {
-      try {
-        return await fn();
-      } catch (error) {
-        if (retries <= 0) {
-          throw error;
-        }
-        if (this.callback) {
-          const res = this.callback(retries, error);
-          if (res) {
-            const { newRetries } = res;
-            if (newRetries === 0) throw error;
-            this.retries = newRetries || retries;
-          }
-        }
-        await sleep(this.delay);
-        retries--;
-      }
-    }
-  }
-  static create(options) {
-    return new _PromiseRetry(options);
-  }
-};
-
 // src/utils/requests.ts
 import { CookieAgent } from "http-cookie-agent/undici";
 import { CookieJar } from "tough-cookie";
@@ -227,186 +190,6 @@ function fetchByteRange(url, downloadedSize) {
   const requestHeaders = new Headers(HeadersDefault);
   requestHeaders.set("Range", `bytes=${downloadedSize}-`);
   return fetch2(url, { headers: requestHeaders });
-}
-
-// src/utils/timer.ts
-var Timer = class _Timer {
-  constructor(timeout = 1e4, timeoutCallback) {
-    this.timeout = timeout;
-    this.timeoutCallback = timeoutCallback;
-    this.timeout = timeout;
-  }
-  timer = void 0;
-  start() {
-    this.timer = setTimeout(() => {
-      this.stop();
-      this.timeoutCallback();
-    }, this.timeout);
-    return this;
-  }
-  stop() {
-    if (this.timer) {
-      clearTimeout(this.timer);
-      this.timer = void 0;
-    }
-    return this;
-  }
-  reset() {
-    this.stop();
-    this.start();
-    return this;
-  }
-  static withSignal(timeout, message) {
-    const controller = new AbortController();
-    const callback = () => {
-      controller.abort(message);
-    };
-    const timer = new _Timer(timeout, callback).start();
-    return {
-      timer,
-      signal: controller.signal
-    };
-  }
-};
-
-// src/utils/downloader.ts
-var Downloader = class {
-  constructor(chunkTimeout = 3e4, chunkFetchRetries = 5, fetchRetries = 7) {
-    this.chunkTimeout = chunkTimeout;
-    this.chunkFetchRetries = chunkFetchRetries;
-    this.fetchRetries = fetchRetries;
-  }
-  subject = new Subject();
-  async fetchStream(file, stream) {
-    const { subject, chunkTimeout } = this;
-    const { timer, signal } = Timer.withSignal(chunkTimeout, "chunkTimeout");
-    const fileStream = fs2.createWriteStream(file.filepath, { flags: "a" });
-    const progressStream = new Transform({
-      transform(chunk, _encoding, callback) {
-        this.push(chunk);
-        file.downloaded += chunk.length;
-        timer.reset();
-        subject.next({ type: "CHUNK_DOWNLOADING_UPDATE", file });
-        callback();
-      }
-    });
-    try {
-      subject.next({ type: "CHUNK_DOWNLOADING_START", file });
-      await pipeline(stream, progressStream, fileStream, { signal });
-    } catch (error) {
-      console.error(error.name === "AbortError" ? signal.reason : error);
-    } finally {
-      subject.next({ type: "CHUNK_DOWNLOADING_END", file });
-    }
-  }
-  async downloadFile(file) {
-    file.downloaded = await getFileSize(file.filepath);
-    const response = await fetchByteRange(file.url, file.downloaded);
-    if (!response?.ok && response?.status !== 416) {
-      throw new Error(`HTTP error! status: ${response?.status}`);
-    }
-    const contentLength = response.headers.get("Content-Length");
-    if (!contentLength && file.downloaded > 0) return;
-    const restFileSize = parseInt(contentLength);
-    file.size = restFileSize + file.downloaded;
-    if (file.size > file.downloaded && response.body) {
-      const stream = Readable.fromWeb(response.body);
-      const sizeOld = file.downloaded;
-      await PromiseRetry.create({
-        retries: this.chunkFetchRetries,
-        callback: () => {
-          if (sizeOld !== file.downloaded) {
-            return { newRetries: 5 };
-          }
-        }
-      }).execute(async () => await this.fetchStream(file, stream));
-    }
-    this.subject.next({ type: "FILE_DOWNLOADING_END" });
-  }
-  async downloadFiles(filelist) {
-    mkdir(filelist.dirPath);
-    this.subject.next({ type: "FILES_DOWNLOADING_START", filesCount: filelist.files.length });
-    for (const file of filelist.files) {
-      this.subject.next({ type: "FILE_DOWNLOADING_START" });
-      await PromiseRetry.create({
-        retries: this.fetchRetries,
-        callback: (retries) => {
-          if (/coomer|kemono/.test(file.url)) {
-            file.url = tryFixCoomerUrl(file.url, retries);
-          }
-        }
-      }).execute(async () => await this.downloadFile(file));
-      this.subject.next({ type: "FILE_DOWNLOADING_END" });
-    }
-    this.subject.next({ type: "FILES_DOWNLOADING_END" });
-  }
-};
-
-// src/utils/multibar.ts
-import { MultiBar } from "cli-progress";
-
-// src/utils/strings.ts
-function b2mb(bytes) {
-  return Number.parseFloat((bytes / 1048576).toFixed(2));
-}
-function formatNameStdout(pathname) {
-  const name = pathname.split("/").pop() || "";
-  const consoleWidth = process.stdout.columns;
-  const width = Math.max(consoleWidth / 2 | 0, 40);
-  if (name.length < width) return name.trim();
-  const result = `${name.slice(0, width - 15)} ... ${name.slice(-10)}`.replace(/ +/g, " ");
-  return result;
-}
-
-// src/utils/multibar.ts
-var config = {
-  clearOnComplete: true,
-  gracefulExit: true,
-  autopadding: true,
-  hideCursor: true,
-  format: "{percentage}% | {filename} | {value}/{total}{size}"
-};
-function createMultibar(downloader) {
-  const multibar = new MultiBar(config);
-  let bar;
-  let minibar;
-  let filename;
-  let index = 0;
-  downloader.subject.subscribe({
-    next: ({ type, filesCount, file }) => {
-      switch (type) {
-        case "FILES_DOWNLOADING_START":
-          bar?.stop();
-          bar = multibar.create(filesCount, 0);
-          break;
-        case "FILES_DOWNLOADING_END":
-          bar?.stop();
-          break;
-        case "FILE_DOWNLOADING_START":
-          bar?.update(++index, { filename: "Downloaded files", size: "" });
-          break;
-        case "FILE_DOWNLOADING_END":
-          multibar.remove(minibar);
-          break;
-        case "CHUNK_DOWNLOADING_START":
-          multibar?.remove(minibar);
-          filename = formatNameStdout(file?.filepath);
-          minibar = multibar.create(b2mb(file?.size), b2mb(file?.downloaded));
-          break;
-        case "CHUNK_DOWNLOADING_UPDATE":
-          minibar?.update(b2mb(file?.downloaded), {
-            filename,
-            size: "mb"
-          });
-          break;
-        case "CHUNK_DOWNLOADING_END":
-          multibar?.remove(minibar);
-          break;
-        default:
-          break;
-      }
-    }
-  });
 }
 
 // src/api/coomer-api.ts
@@ -596,7 +379,7 @@ async function apiHandler(url_) {
   throw Error("Invalid URL");
 }
 
-// src/args-handler.ts
+// src/cli/args-handler.ts
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 function argumentHander() {
@@ -628,6 +411,232 @@ function argumentHander() {
     description: "Skips the first N files in the download queue"
   }).help().alias("help", "h").parseSync();
 }
+
+// src/cli/multibar.ts
+import { MultiBar } from "cli-progress";
+
+// src/utils/strings.ts
+function b2mb(bytes) {
+  return Number.parseFloat((bytes / 1048576).toFixed(2));
+}
+function formatNameStdout(pathname) {
+  const name = pathname.split("/").pop() || "";
+  const consoleWidth = process.stdout.columns;
+  const width = Math.max(consoleWidth / 2 | 0, 40);
+  if (name.length < width) return name.trim();
+  const result = `${name.slice(0, width - 15)} ... ${name.slice(-10)}`.replace(/ +/g, " ");
+  return result;
+}
+
+// src/cli/multibar.ts
+var config = {
+  clearOnComplete: true,
+  gracefulExit: true,
+  autopadding: true,
+  hideCursor: true,
+  format: "{percentage}% | {filename} | {value}/{total}{size}"
+};
+function createMultibar(downloader) {
+  const multibar = new MultiBar(config);
+  let bar;
+  let minibar;
+  let filename;
+  let index = 0;
+  downloader.subject.subscribe({
+    next: ({ type, filesCount, file }) => {
+      switch (type) {
+        case "FILES_DOWNLOADING_START":
+          bar?.stop();
+          bar = multibar.create(filesCount, 0);
+          break;
+        case "FILES_DOWNLOADING_END":
+          bar?.stop();
+          break;
+        case "FILE_DOWNLOADING_START":
+          bar?.update(++index, { filename: "Downloaded files", size: "" });
+          break;
+        case "FILE_DOWNLOADING_END":
+          multibar.remove(minibar);
+          break;
+        case "CHUNK_DOWNLOADING_START":
+          multibar?.remove(minibar);
+          filename = formatNameStdout(file?.filepath);
+          minibar = multibar.create(b2mb(file?.size), b2mb(file?.downloaded));
+          break;
+        case "CHUNK_DOWNLOADING_UPDATE":
+          minibar?.update(b2mb(file?.downloaded), {
+            filename,
+            size: "mb"
+          });
+          break;
+        case "CHUNK_DOWNLOADING_END":
+          multibar?.remove(minibar);
+          break;
+        default:
+          break;
+      }
+    }
+  });
+}
+
+// src/utils/downloader.ts
+import fs2 from "node:fs";
+import { Readable, Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import { Subject } from "rxjs";
+
+// src/utils/promise.ts
+async function sleep(time) {
+  return new Promise((resolve) => setTimeout(resolve, time));
+}
+var PromiseRetry = class _PromiseRetry {
+  retries;
+  delay;
+  callback;
+  constructor(options) {
+    this.retries = options.retries || 3;
+    this.delay = options.delay || 1e3;
+    this.callback = options.callback;
+  }
+  async execute(fn) {
+    let retries = this.retries;
+    while (true) {
+      try {
+        return await fn();
+      } catch (error) {
+        if (retries <= 0) {
+          throw error;
+        }
+        if (this.callback) {
+          const res = this.callback(retries, error);
+          if (res) {
+            const { newRetries } = res;
+            if (newRetries === 0) throw error;
+            this.retries = newRetries || retries;
+          }
+        }
+        await sleep(this.delay);
+        retries--;
+      }
+    }
+  }
+  static create(options) {
+    return new _PromiseRetry(options);
+  }
+};
+
+// src/utils/timer.ts
+var Timer = class _Timer {
+  constructor(timeout = 1e4, timeoutCallback) {
+    this.timeout = timeout;
+    this.timeoutCallback = timeoutCallback;
+    this.timeout = timeout;
+  }
+  timer = void 0;
+  start() {
+    this.timer = setTimeout(() => {
+      this.stop();
+      this.timeoutCallback();
+    }, this.timeout);
+    return this;
+  }
+  stop() {
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = void 0;
+    }
+    return this;
+  }
+  reset() {
+    this.stop();
+    this.start();
+    return this;
+  }
+  static withSignal(timeout, message) {
+    const controller = new AbortController();
+    const callback = () => {
+      controller.abort(message);
+    };
+    const timer = new _Timer(timeout, callback).start();
+    return {
+      timer,
+      signal: controller.signal
+    };
+  }
+};
+
+// src/utils/downloader.ts
+var Downloader = class {
+  constructor(chunkTimeout = 3e4, chunkFetchRetries = 5, fetchRetries = 7) {
+    this.chunkTimeout = chunkTimeout;
+    this.chunkFetchRetries = chunkFetchRetries;
+    this.fetchRetries = fetchRetries;
+  }
+  subject = new Subject();
+  async fetchStream(file, stream) {
+    const { subject, chunkTimeout } = this;
+    const { timer, signal } = Timer.withSignal(chunkTimeout, "chunkTimeout");
+    const fileStream = fs2.createWriteStream(file.filepath, { flags: "a" });
+    const progressStream = new Transform({
+      transform(chunk, _encoding, callback) {
+        this.push(chunk);
+        file.downloaded += chunk.length;
+        timer.reset();
+        subject.next({ type: "CHUNK_DOWNLOADING_UPDATE", file });
+        callback();
+      }
+    });
+    try {
+      subject.next({ type: "CHUNK_DOWNLOADING_START", file });
+      await pipeline(stream, progressStream, fileStream, { signal });
+    } catch (error) {
+      console.error(error.name === "AbortError" ? signal.reason : error);
+    } finally {
+      subject.next({ type: "CHUNK_DOWNLOADING_END", file });
+    }
+  }
+  async downloadFile(file) {
+    file.downloaded = await getFileSize(file.filepath);
+    const response = await fetchByteRange(file.url, file.downloaded);
+    if (!response?.ok && response?.status !== 416) {
+      throw new Error(`HTTP error! status: ${response?.status}`);
+    }
+    const contentLength = response.headers.get("Content-Length");
+    if (!contentLength && file.downloaded > 0) return;
+    const restFileSize = parseInt(contentLength);
+    file.size = restFileSize + file.downloaded;
+    if (file.size > file.downloaded && response.body) {
+      const stream = Readable.fromWeb(response.body);
+      const sizeOld = file.downloaded;
+      await PromiseRetry.create({
+        retries: this.chunkFetchRetries,
+        callback: () => {
+          if (sizeOld !== file.downloaded) {
+            return { newRetries: 5 };
+          }
+        }
+      }).execute(async () => await this.fetchStream(file, stream));
+    }
+    this.subject.next({ type: "FILE_DOWNLOADING_END" });
+  }
+  async downloadFiles(filelist) {
+    mkdir(filelist.dirPath);
+    this.subject.next({ type: "FILES_DOWNLOADING_START", filesCount: filelist.files.length });
+    for (const file of filelist.files) {
+      this.subject.next({ type: "FILE_DOWNLOADING_START" });
+      await PromiseRetry.create({
+        retries: this.fetchRetries,
+        callback: (retries) => {
+          if (/coomer|kemono/.test(file.url)) {
+            file.url = tryFixCoomerUrl(file.url, retries);
+          }
+        }
+      }).execute(async () => await this.downloadFile(file));
+      this.subject.next({ type: "FILE_DOWNLOADING_END" });
+    }
+    this.subject.next({ type: "FILES_DOWNLOADING_END" });
+  }
+};
 
 // src/index.ts
 async function run() {

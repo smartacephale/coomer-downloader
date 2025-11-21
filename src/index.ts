@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import process from 'node:process';
 import { apiHandler } from './api';
-import { argumentHander } from './args-handler';
-import { createMultibar, Downloader, setGlobalHeaders } from './utils';
+import { argumentHander } from './cli/args-handler';
+import { createMultibar } from './cli/multibar';
+import { Downloader } from './utils/downloader';
+import { setGlobalHeaders } from './utils/requests';
 
 async function run() {
   const { url, dir, media, include, exclude, skip } = argumentHander();
@@ -14,6 +16,7 @@ async function run() {
   filelist.skip(skip);
   filelist.filterByText(include, exclude);
   filelist.filterByMediaType(media);
+  // await filelist.calculateFileSizes();
 
   console.table([
     {

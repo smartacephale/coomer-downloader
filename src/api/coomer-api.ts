@@ -1,5 +1,6 @@
-import { CoomerFile, CoomerFileList } from '../utils/file.js';
-import { fetchWithGlobalHeader, isImage, setGlobalHeaders } from '../utils/index.js';
+import { CoomerFile, CoomerFileList } from '../utils/file';
+import { isImage } from '../utils/filters';
+import { fetchWithGlobalHeader, setGlobalHeaders } from '../utils/requests';
 
 type CoomerAPIUser = { domain: string; service: string; id: string; name?: string };
 type CoomerAPIUserData = { name: string };

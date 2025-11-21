@@ -1,6 +1,5 @@
 # Node.js
 node_modules/
-src/api/test.js
 
 # Logs
 npm-debug.log*

@@ -1,6 +1,6 @@
 import { MultiBar, type Options, type SingleBar } from 'cli-progress';
-import type { Downloader } from './downloader';
-import { b2mb, formatNameStdout } from './strings';
+import type { Downloader } from '../utils/downloader';
+import { b2mb, formatNameStdout } from '../utils/strings';
 
 const config: Options = {
   clearOnComplete: true,

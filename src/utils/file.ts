@@ -2,6 +2,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { MediaType } from '../types';
 import { filterString, testMediaType } from './filters';
+import { getFileSize } from './io';
 
 interface ICoomerFile {
   name: string;
@@ -20,11 +21,16 @@ export class CoomerFile {
     public url: string,
     public filepath?: string,
     public size?: number,
-    public downloaded?: number,
+    public downloaded = 0,
     public content?: string,
   ) {}
 
-  get textContent() {
+  public async getDownloadedSize() {
+    this.downloaded = await getFileSize(this.filepath as string);
+    return this;
+  }
+
+  public get textContent() {
     const text = `${this.name || ''} ${this.content || ''}`.toLowerCase();
     return text;
   }
@@ -71,5 +77,11 @@ export class CoomerFileList {
   public skip(n: number) {
     this.files = this.files.slice(n);
     return this;
+  }
+
+  public async calculateFileSizes() {
+    for (const file of this.files) {
+      await file.getDownloadedSize();
+    }
   }
 }

@@ -1,6 +1,6 @@
 import { fetch } from 'undici';
-import { CoomerFile, CoomerFileList } from '../utils/file.js';
-import { setGlobalHeaders } from '../utils/index.js';
+import { CoomerFile, CoomerFileList } from '../utils/file';
+import { setGlobalHeaders } from '../utils/requests';
 
 type GoFileAPIToken = { status: string; data: { token: string } };
 type GoFileAPIFilelist = { data: { children: { link: string; name: string }[] } };
