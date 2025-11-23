@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
 import { fetch } from 'undici';
-import { CoomerFile, CoomerFileList } from '../utils/file';
+import { CoomerFile, CoomerFileList } from '../services/file';
 
 async function getUserPage(user: string, offset: number) {
   const url = `https://nsfw.xxx/page/${offset}?nsfw[]=0&types[]=image&types[]=video&types[]=gallery&slider=1&jsload=1&user=${user}&_=${Date.now()}`;

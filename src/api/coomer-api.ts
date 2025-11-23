@@ -1,4 +1,4 @@
-import { CoomerFile, CoomerFileList } from '../utils/file';
+import { CoomerFile, CoomerFileList } from '../services/file';
 import { isImage } from '../utils/filters';
 import { fetchWithGlobalHeader, setGlobalHeaders } from '../utils/requests';
 

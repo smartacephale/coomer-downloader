@@ -1,8 +1,8 @@
 import os from 'node:os';
 import path from 'node:path';
 import type { MediaType } from '../types';
-import { filterString, testMediaType } from './filters';
-import { getFileSize } from './io';
+import { filterString, testMediaType } from '../utils/filters';
+import { getFileSize } from '../utils/io';
 
 interface ICoomerFile {
   name: string;
@@ -14,7 +14,7 @@ interface ICoomerFile {
 }
 
 export class CoomerFile {
-  public state: 'downloading' | 'pause' = 'pause';
+  public active = false;
 
   constructor(
     public name: string,
@@ -83,5 +83,13 @@ export class CoomerFileList {
     for (const file of this.files) {
       await file.getDownloadedSize();
     }
+  }
+
+  public getActiveFiles() {
+    return this.files.filter((f) => f.active);
+  }
+
+  public getDownloaded() {
+    return this.files.filter((f) => f.size && f.size <= f.downloaded);
   }
 }

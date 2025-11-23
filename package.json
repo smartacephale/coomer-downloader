@@ -1,6 +1,6 @@
 {
   "name": "coomer-downloader",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "author": "smartacephal",
   "license": "MIT",
   "description": "Downloads images/videos from Coomer/Kemono, Bunkr, GoFile, Reddit-NSFW user posts",
@@ -22,10 +22,11 @@
     "type": "git",
     "url": "git+https://github.com/smartacephale/coomer-downloader.git"
   },
-  "main": "./src/index.ts",
+  "main": "./src/index.tsx",
   "type": "module",
   "scripts": {
     "start": "tsx ./src/index.ts",
+    "start-watch": "tsx watch ./src/index.ts",
     "build": "node build.js",
     "start-build": "npm run build && node ./dist/index.js"
   },
@@ -38,18 +39,23 @@
   },
   "dependencies": {
     "cheerio": "1.1.0",
-    "cli-progress": "^3.12.0",
+    "cli-spinners": "^3.3.0",
     "http-cookie-agent": "^6.0.0",
+    "ink": "^6.5.1",
+    "react": "^19.2.0",
     "rxjs": "^7.8.2",
     "tough-cookie": "5.1.2",
     "undici": "^6.22.0",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
-    "@types/cli-progress": "^3.11.6",
     "@types/node": "^24.10.0",
+    "@types/react": "^19.2.6",
     "@types/yargs": "^17.0.34",
     "esbuild": "^0.27.0",
+    "eslint-config-xo-react": "^0.27.0",
+    "eslint-plugin-react": "^7.32.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
     "tsx": "^4.20.6"
   }
 }

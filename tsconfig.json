@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "jsx": "react",
     "target": "ESNext",
     "useDefineForClassFields": true,
     "module": "esnext",
@@ -9,7 +10,7 @@
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "moduleDetection": "force",
-    
+
     "declaration": true,
     "typeRoots": ["./dist/index.d.ts", "./src/types", "./node_modules/@types"],
     "outDir": "./dist",

@@ -7,7 +7,7 @@ import process2 from "node:process";
 import * as cheerio from "cheerio";
 import { fetch } from "undici";
 
-// src/utils/file.ts
+// src/services/file.ts
 import os from "node:os";
 import path from "node:path";
 
@@ -51,7 +51,7 @@ function mkdir(filepath) {
   }
 }
 
-// src/utils/file.ts
+// src/services/file.ts
 var CoomerFile = class _CoomerFile {
   constructor(name, url, filepath, size, downloaded = 0, content) {
     this.name = name;
@@ -61,7 +61,7 @@ var CoomerFile = class _CoomerFile {
     this.downloaded = downloaded;
     this.content = content;
   }
-  state = "pause";
+  active = false;
   async getDownloadedSize() {
     this.downloaded = await getFileSize(this.filepath);
     return this;
@@ -110,6 +110,12 @@ var CoomerFileList = class {
     for (const file of this.files) {
       await file.getDownloadedSize();
     }
+  }
+  getActiveFiles() {
+    return this.files.filter((f) => f.active);
+  }
+  getDownloaded() {
+    return this.files.filter((f) => f.size && f.size <= f.downloaded);
   }
 };
 
@@ -186,10 +192,10 @@ function fetchWithGlobalHeader(url) {
   const requestHeaders = new Headers(HeadersDefault);
   return fetch2(url, { headers: requestHeaders });
 }
-function fetchByteRange(url, downloadedSize) {
+function fetchByteRange(url, downloadedSize, signal) {
   const requestHeaders = new Headers(HeadersDefault);
   requestHeaders.set("Range", `bytes=${downloadedSize}-`);
-  return fetch2(url, { headers: requestHeaders });
+  return fetch2(url, { headers: requestHeaders, signal });
 }
 
 // src/api/coomer-api.ts
@@ -412,74 +418,150 @@ function argumentHander() {
   }).help().alias("help", "h").parseSync();
 }
 
-// src/cli/multibar.ts
-import { MultiBar } from "cli-progress";
+// src/cli/ui/index.tsx
+import { render } from "ink";
+import React7 from "react";
+
+// src/cli/ui/app.tsx
+import { Box as Box5 } from "ink";
+import React6 from "react";
+
+// src/cli/ui/components/filebox.tsx
+import { Box, Spacer, Text as Text2 } from "ink";
+import React2 from "react";
 
 // src/utils/strings.ts
 function b2mb(bytes) {
-  return Number.parseFloat((bytes / 1048576).toFixed(2));
-}
-function formatNameStdout(pathname) {
-  const name = pathname.split("/").pop() || "";
-  const consoleWidth = process.stdout.columns;
-  const width = Math.max(consoleWidth / 2 | 0, 40);
-  if (name.length < width) return name.trim();
-  const result = `${name.slice(0, width - 15)} ... ${name.slice(-10)}`.replace(/ +/g, " ");
-  return result;
+  return (bytes / 1048576).toFixed(2);
 }
 
-// src/cli/multibar.ts
-var config = {
-  clearOnComplete: true,
-  gracefulExit: true,
-  autopadding: true,
-  hideCursor: true,
-  format: "{percentage}% | {filename} | {value}/{total}{size}"
-};
-function createMultibar(downloader) {
-  const multibar = new MultiBar(config);
-  let bar;
-  let minibar;
-  let filename;
-  let index = 0;
-  downloader.subject.subscribe({
-    next: ({ type, filesCount, file }) => {
-      switch (type) {
-        case "FILES_DOWNLOADING_START":
-          bar?.stop();
-          bar = multibar.create(filesCount, 0);
-          break;
-        case "FILES_DOWNLOADING_END":
-          bar?.stop();
-          break;
-        case "FILE_DOWNLOADING_START":
-          bar?.update(++index, { filename: "Downloaded files", size: "" });
-          break;
-        case "FILE_DOWNLOADING_END":
-          multibar.remove(minibar);
-          break;
-        case "CHUNK_DOWNLOADING_START":
-          multibar?.remove(minibar);
-          filename = formatNameStdout(file?.filepath);
-          minibar = multibar.create(b2mb(file?.size), b2mb(file?.downloaded));
-          break;
-        case "CHUNK_DOWNLOADING_UPDATE":
-          minibar?.update(b2mb(file?.downloaded), {
-            filename,
-            size: "mb"
-          });
-          break;
-        case "CHUNK_DOWNLOADING_END":
-          multibar?.remove(minibar);
-          break;
-        default:
-          break;
+// src/cli/ui/components/spinner.tsx
+import spinners from "cli-spinners";
+import { Text } from "ink";
+import React, { useEffect, useState } from "react";
+function Spinner({ type = "dots" }) {
+  const spinner = spinners[type];
+  const randomFrame = spinner.frames.length * Math.random() | 0;
+  const [frame, setFrame] = useState(randomFrame);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setFrame((previousFrame) => {
+        return (previousFrame + 1) % spinner.frames.length;
+      });
+    }, spinner.interval);
+    return () => {
+      clearInterval(timer);
+    };
+  }, [spinner]);
+  return /* @__PURE__ */ React.createElement(Text, null, spinner.frames[frame]);
+}
+
+// src/cli/ui/components/filebox.tsx
+function FileBox({ file }) {
+  const percentage = Number(file.downloaded / file.size * 100).toFixed(2);
+  return /* @__PURE__ */ React2.createElement(
+    Box,
+    {
+      borderStyle: "single",
+      borderColor: "magentaBright",
+      borderDimColor: true,
+      paddingX: 1,
+      flexDirection: "column"
+    },
+    /* @__PURE__ */ React2.createElement(Box, null, /* @__PURE__ */ React2.createElement(Text2, { color: "blue", dimColor: true, wrap: "truncate-middle" }, file.name)),
+    /* @__PURE__ */ React2.createElement(Box, { flexDirection: "row-reverse" }, /* @__PURE__ */ React2.createElement(Text2, { color: "cyan", dimColor: true }, b2mb(file.downloaded), "/", file.size ? b2mb(file.size) : "\u221E", " MB"), /* @__PURE__ */ React2.createElement(Text2, { color: "redBright", dimColor: true }, file.size ? `  ${percentage}% ` : ""), /* @__PURE__ */ React2.createElement(Spacer, null), /* @__PURE__ */ React2.createElement(Text2, { color: "green", dimColor: true }, /* @__PURE__ */ React2.createElement(Spinner, null)))
+  );
+}
+
+// src/cli/ui/components/fileliststatebox.tsx
+import { Box as Box2, Text as Text3 } from "ink";
+import React3 from "react";
+function FileListStateBox({ filelist }) {
+  return /* @__PURE__ */ React3.createElement(
+    Box2,
+    {
+      paddingX: 1,
+      flexDirection: "column",
+      borderStyle: "single",
+      borderColor: "magenta",
+      borderDimColor: true
+    },
+    /* @__PURE__ */ React3.createElement(Box2, null, /* @__PURE__ */ React3.createElement(Box2, { marginRight: 1 }, /* @__PURE__ */ React3.createElement(Text3, { color: "cyanBright", dimColor: true }, "Found:")), /* @__PURE__ */ React3.createElement(Text3, { color: "blue", dimColor: true, wrap: "wrap" }, filelist.files.length)),
+    /* @__PURE__ */ React3.createElement(Box2, null, /* @__PURE__ */ React3.createElement(Box2, { marginRight: 1 }, /* @__PURE__ */ React3.createElement(Text3, { color: "cyanBright", dimColor: true }, "Downloaded:")), /* @__PURE__ */ React3.createElement(Text3, { color: "blue", dimColor: true, wrap: "wrap" }, filelist.getDownloaded().length)),
+    /* @__PURE__ */ React3.createElement(Box2, null, /* @__PURE__ */ React3.createElement(Box2, { width: 9 }, /* @__PURE__ */ React3.createElement(Text3, { color: "cyanBright", dimColor: true }, "Folder:")), /* @__PURE__ */ React3.createElement(Box2, { flexGrow: 1 }, /* @__PURE__ */ React3.createElement(Text3, { color: "blue", dimColor: true, wrap: "truncate-middle" }, filelist.dirPath)))
+  );
+}
+
+// src/cli/ui/components/keyboardcontrolsinfo.tsx
+import { Box as Box3, Text as Text4 } from "ink";
+import React4 from "react";
+function KeyboardControlsInfo() {
+  return /* @__PURE__ */ React4.createElement(
+    Box3,
+    {
+      flexDirection: "column",
+      paddingX: 1,
+      borderStyle: "single",
+      borderColor: "gray",
+      borderDimColor: true
+    },
+    /* @__PURE__ */ React4.createElement(Box3, null, /* @__PURE__ */ React4.createElement(Text4, { color: "red", dimColor: true, bold: true }, "Keyboard controls:")),
+    /* @__PURE__ */ React4.createElement(Box3, null, /* @__PURE__ */ React4.createElement(Box3, { marginRight: 2 }, /* @__PURE__ */ React4.createElement(Text4, { color: "red", dimColor: true, bold: true }, "s")), /* @__PURE__ */ React4.createElement(Text4, { dimColor: true, bold: false }, "skip current file"))
+  );
+}
+
+// src/cli/ui/components/titlebar.tsx
+import { Box as Box4, Spacer as Spacer2, Text as Text5 } from "ink";
+import React5 from "react";
+
+// package.json
+var version = "3.3.0";
+
+// src/cli/ui/components/titlebar.tsx
+function TitleBar() {
+  return /* @__PURE__ */ React5.createElement(Box4, null, /* @__PURE__ */ React5.createElement(Spacer2, null), /* @__PURE__ */ React5.createElement(Box4, { borderColor: "magenta", borderStyle: "arrow" }, /* @__PURE__ */ React5.createElement(Text5, { color: "cyanBright" }, "Coomer-Downloader ", version)), /* @__PURE__ */ React5.createElement(Spacer2, null));
+}
+
+// src/cli/ui/hooks/downloader.ts
+import { useEffect as useEffect2, useState as useState2 } from "react";
+var useDownloaderHook = (downloader) => {
+  const filelist = downloader?.filelist;
+  const [_, setHelper] = useState2(0);
+  useEffect2(() => {
+    downloader?.subject.subscribe(({ type }) => {
+      if (type === "FILE_DOWNLOADING_START" || type === "FILE_DOWNLOADING_END" || type === "CHUNK_DOWNLOADING_UPDATE") {
+        setHelper(Date.now());
       }
+    });
+  });
+  return { filelist };
+};
+
+// src/cli/ui/hooks/input.ts
+import { useInput } from "ink";
+var useInputHook = (downloader) => {
+  useInput((input) => {
+    if (input === "s") {
+      downloader.skip();
     }
   });
+};
+
+// src/cli/ui/app.tsx
+function App({ downloader }) {
+  const { filelist } = useDownloaderHook(downloader);
+  useInputHook(downloader);
+  return /* @__PURE__ */ React6.createElement(Box5, { borderStyle: "single", flexDirection: "column", borderColor: "blue", width: 80 }, /* @__PURE__ */ React6.createElement(TitleBar, null), /* @__PURE__ */ React6.createElement(Box5, null, /* @__PURE__ */ React6.createElement(Box5, null, /* @__PURE__ */ React6.createElement(FileListStateBox, { filelist })), /* @__PURE__ */ React6.createElement(Box5, { flexBasis: 29 }, /* @__PURE__ */ React6.createElement(KeyboardControlsInfo, null))), filelist.getActiveFiles().map((file) => {
+    return /* @__PURE__ */ React6.createElement(FileBox, { file, key: file.name });
+  }));
 }
 
-// src/utils/downloader.ts
+// src/cli/ui/index.tsx
+function createReactInk(downloader) {
+  return render(/* @__PURE__ */ React7.createElement(App, { downloader }));
+}
+
+// src/services/downloader.ts
 import fs2 from "node:fs";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -489,41 +571,6 @@ import { Subject } from "rxjs";
 async function sleep(time) {
   return new Promise((resolve) => setTimeout(resolve, time));
 }
-var PromiseRetry = class _PromiseRetry {
-  retries;
-  delay;
-  callback;
-  constructor(options) {
-    this.retries = options.retries || 3;
-    this.delay = options.delay || 1e3;
-    this.callback = options.callback;
-  }
-  async execute(fn) {
-    let retries = this.retries;
-    while (true) {
-      try {
-        return await fn();
-      } catch (error) {
-        if (retries <= 0) {
-          throw error;
-        }
-        if (this.callback) {
-          const res = this.callback(retries, error);
-          if (res) {
-            const { newRetries } = res;
-            if (newRetries === 0) throw error;
-            this.retries = newRetries || retries;
-          }
-        }
-        await sleep(this.delay);
-        retries--;
-      }
-    }
-  }
-  static create(options) {
-    return new _PromiseRetry(options);
-  }
-};
 
 // src/utils/timer.ts
 var Timer = class _Timer {
@@ -532,7 +579,7 @@ var Timer = class _Timer {
     this.timeoutCallback = timeoutCallback;
     this.timeout = timeout;
   }
-  timer = void 0;
+  timer;
   start() {
     this.timer = setTimeout(() => {
       this.stop();
@@ -552,86 +599,112 @@ var Timer = class _Timer {
     this.start();
     return this;
   }
-  static withSignal(timeout, message) {
-    const controller = new AbortController();
+  static withAbortController(timeout, abortControllerSubject, message = "Timeout") {
     const callback = () => {
-      controller.abort(message);
+      abortControllerSubject.next(message);
     };
     const timer = new _Timer(timeout, callback).start();
-    return {
-      timer,
-      signal: controller.signal
-    };
+    return { timer };
   }
 };
 
-// src/utils/downloader.ts
+// src/services/downloader.ts
 var Downloader = class {
-  constructor(chunkTimeout = 3e4, chunkFetchRetries = 5, fetchRetries = 7) {
+  constructor(filelist, chunkTimeout = 3e4, chunkFetchRetries = 5, fetchRetries = 7) {
+    this.filelist = filelist;
     this.chunkTimeout = chunkTimeout;
     this.chunkFetchRetries = chunkFetchRetries;
     this.fetchRetries = fetchRetries;
+    this.setAbortControllerListener();
   }
   subject = new Subject();
-  async fetchStream(file, stream) {
-    const { subject, chunkTimeout } = this;
-    const { timer, signal } = Timer.withSignal(chunkTimeout, "chunkTimeout");
-    const fileStream = fs2.createWriteStream(file.filepath, { flags: "a" });
-    const progressStream = new Transform({
-      transform(chunk, _encoding, callback) {
-        this.push(chunk);
-        file.downloaded += chunk.length;
-        timer.reset();
-        subject.next({ type: "CHUNK_DOWNLOADING_UPDATE", file });
-        callback();
-      }
+  abortController = new AbortController();
+  abortControllerSubject = new Subject();
+  setAbortControllerListener() {
+    this.abortControllerSubject.subscribe((type) => {
+      this.abortController.abort(type);
+      this.abortController = new AbortController();
     });
+  }
+  async fetchStream(file, stream, sizeOld = 0, retries = this.chunkFetchRetries) {
+    const signal = this.abortController.signal;
+    const subject = this.subject;
+    const { timer } = Timer.withAbortController(this.chunkTimeout, this.abortControllerSubject);
+    let i;
     try {
-      subject.next({ type: "CHUNK_DOWNLOADING_START", file });
+      const fileStream = fs2.createWriteStream(file.filepath, { flags: "a" });
+      const progressStream = new Transform({
+        transform(chunk, _encoding, callback) {
+          this.push(chunk);
+          file.downloaded += chunk.length;
+          timer.reset();
+          subject.next({ type: "CHUNK_DOWNLOADING_UPDATE" });
+          callback();
+        }
+      });
+      subject.next({ type: "CHUNK_DOWNLOADING_START" });
       await pipeline(stream, progressStream, fileStream, { signal });
     } catch (error) {
-      console.error(error.name === "AbortError" ? signal.reason : error);
+      if (signal.aborted) {
+        if (signal.reason === "FILE_SKIP") return;
+        if (signal.reason === "TIMEOUT") {
+          if (retries === 0 && sizeOld < file.downloaded) {
+            retries += this.chunkFetchRetries;
+            sizeOld = file.downloaded;
+          }
+          if (retries === 0) return;
+          return await this.fetchStream(file, stream, sizeOld, retries - 1);
+        }
+      }
+      throw error;
     } finally {
-      subject.next({ type: "CHUNK_DOWNLOADING_END", file });
+      subject.next({ type: "CHUNK_DOWNLOADING_END" });
+      timer.stop();
+      clearInterval(i);
     }
   }
-  async downloadFile(file) {
-    file.downloaded = await getFileSize(file.filepath);
-    const response = await fetchByteRange(file.url, file.downloaded);
-    if (!response?.ok && response?.status !== 416) {
-      throw new Error(`HTTP error! status: ${response?.status}`);
-    }
-    const contentLength = response.headers.get("Content-Length");
-    if (!contentLength && file.downloaded > 0) return;
-    const restFileSize = parseInt(contentLength);
-    file.size = restFileSize + file.downloaded;
-    if (file.size > file.downloaded && response.body) {
-      const stream = Readable.fromWeb(response.body);
-      const sizeOld = file.downloaded;
-      await PromiseRetry.create({
-        retries: this.chunkFetchRetries,
-        callback: () => {
-          if (sizeOld !== file.downloaded) {
-            return { newRetries: 5 };
-          }
+  skip() {
+    this.abortControllerSubject.next("FILE_SKIP");
+  }
+  async downloadFile(file, retries = this.fetchRetries) {
+    const signal = this.abortController.signal;
+    try {
+      file.downloaded = await getFileSize(file.filepath);
+      const response = await fetchByteRange(file.url, file.downloaded, signal);
+      if (!response?.ok && response?.status !== 416) {
+        throw new Error(`HTTP error! status: ${response?.status}`);
+      }
+      const contentLength = response.headers.get("Content-Length");
+      if (!contentLength && file.downloaded > 0) return;
+      const restFileSize = parseInt(contentLength);
+      file.size = restFileSize + file.downloaded;
+      if (file.size > file.downloaded && response.body) {
+        const stream = Readable.fromWeb(response.body);
+        stream.setMaxListeners(20);
+        await this.fetchStream(file, stream, file.downloaded);
+      }
+    } catch (error) {
+      if (signal.aborted) {
+        if (signal.reason === "FILE_SKIP") return;
+      }
+      if (retries > 0) {
+        if (/coomer|kemono/.test(file.url)) {
+          file.url = tryFixCoomerUrl(file.url, retries);
         }
-      }).execute(async () => await this.fetchStream(file, stream));
+        await sleep(1e3);
+        return await this.downloadFile(file, retries - 1);
+      }
+      throw error;
     }
-    this.subject.next({ type: "FILE_DOWNLOADING_END" });
   }
-  async downloadFiles(filelist) {
-    mkdir(filelist.dirPath);
-    this.subject.next({ type: "FILES_DOWNLOADING_START", filesCount: filelist.files.length });
-    for (const file of filelist.files) {
+  async downloadFiles() {
+    mkdir(this.filelist.dirPath);
+    this.subject.next({ type: "FILES_DOWNLOADING_START" });
+    for (const file of this.filelist.files) {
+      file.active = true;
       this.subject.next({ type: "FILE_DOWNLOADING_START" });
-      await PromiseRetry.create({
-        retries: this.fetchRetries,
-        callback: (retries) => {
-          if (/coomer|kemono/.test(file.url)) {
-            file.url = tryFixCoomerUrl(file.url, retries);
-          }
-        }
-      }).execute(async () => await this.downloadFile(file));
+      await this.downloadFile(file);
+      file.active = false;
       this.subject.next({ type: "FILE_DOWNLOADING_END" });
     }
     this.subject.next({ type: "FILES_DOWNLOADING_END" });
@@ -642,23 +715,15 @@ var Downloader = class {
 async function run() {
   const { url, dir, media, include, exclude, skip } = argumentHander();
   const filelist = await apiHandler(url);
-  const found = filelist.files.length;
   filelist.setDirPath(dir);
   filelist.skip(skip);
   filelist.filterByText(include, exclude);
   filelist.filterByMediaType(media);
-  console.table([
-    {
-      found,
-      skip,
-      filtered: found - filelist.files.length,
-      folder: filelist.dirPath
-    }
-  ]);
+  await filelist.calculateFileSizes();
   setGlobalHeaders({ Referer: url });
-  const downloader = new Downloader();
-  createMultibar(downloader);
-  await downloader.downloadFiles(filelist);
+  const downloader = new Downloader(filelist);
+  createReactInk(downloader);
+  await downloader.downloadFiles();
   process2.kill(process2.pid, "SIGINT");
 }
 run();

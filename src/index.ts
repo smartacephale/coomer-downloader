@@ -1,9 +1,10 @@
 #!/usr/bin/env node
+
 import process from 'node:process';
 import { apiHandler } from './api';
 import { argumentHander } from './cli/args-handler';
-import { createMultibar } from './cli/multibar';
-import { Downloader } from './utils/downloader';
+import { createReactInk } from './cli/ui';
+import { Downloader } from './services/downloader';
 import { setGlobalHeaders } from './utils/requests';
 
 async function run() {
@@ -11,27 +12,18 @@ async function run() {
 
   const filelist = await apiHandler(url);
 
-  const found = filelist.files.length;
   filelist.setDirPath(dir);
   filelist.skip(skip);
   filelist.filterByText(include, exclude);
   filelist.filterByMediaType(media);
-  // await filelist.calculateFileSizes();
 
-  console.table([
-    {
-      found,
-      skip,
-      filtered: found - filelist.files.length,
-      folder: filelist.dirPath,
-    },
-  ]);
+  await filelist.calculateFileSizes();
 
   setGlobalHeaders({ Referer: url });
 
-  const downloader = new Downloader();
-  createMultibar(downloader);
-  await downloader.downloadFiles(filelist);
+  const downloader = new Downloader(filelist);
+  createReactInk(downloader);
+  await downloader.downloadFiles();
 
   process.kill(process.pid, 'SIGINT');
 }

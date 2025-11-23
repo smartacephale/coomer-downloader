@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
 import { fetch } from 'undici';
-import { CoomerFile, CoomerFileList } from '../utils/file';
+import { CoomerFile, CoomerFileList } from '../services/file';
 
 type EncData = { url: string; timestamp: number };
 

@@ -1,5 +1,7 @@
+import type { Subject } from 'rxjs';
+
 export class Timer {
-  private timer: NodeJS.Timeout | undefined = undefined;
+  private timer: NodeJS.Timeout | undefined;
 
   constructor(
     private timeout = 10_000,
@@ -30,18 +32,17 @@ export class Timer {
     return this;
   }
 
-  static withSignal(timeout?: number, message?: string) {
-    const controller = new AbortController();
-
+  static withAbortController(
+    timeout: number,
+    abortControllerSubject: Subject<string>,
+    message: string = 'Timeout',
+  ) {
     const callback = () => {
-      controller.abort(message);
+      abortControllerSubject.next(message);
     };
 
     const timer = new Timer(timeout, callback).start();
 
-    return {
-      timer,
-      signal: controller.signal,
-    };
+    return { timer };
   }
 }

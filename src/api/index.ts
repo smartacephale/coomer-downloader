@@ -1,4 +1,4 @@
-import type { CoomerFileList } from '../utils/file';
+import type { CoomerFileList } from '../services/file';
 import { getBunkrData } from './bunkr';
 import { getCoomerData } from './coomer-api';
 import { getGofileData } from './gofile';
