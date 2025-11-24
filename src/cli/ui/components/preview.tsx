@@ -1,20 +1,32 @@
-import { Box, Spacer, Text } from 'ink';
+import { Box } from 'ink';
 import Image, { TerminalInfoProvider } from 'ink-picture';
 import React from 'react';
 import type { CoomerFile } from '../../../services/file';
+import { isImage } from '../../../utils/filters';
+import { useInkStore } from '../store';
 
 interface PreviewProps {
   file: CoomerFile;
 }
 
 export function Preview({ file }: PreviewProps) {
+  const previewEnabled = useInkStore((state) => state.preview);
+  const bigEnough = file.downloaded > 50 * 1024;
+  const shouldShow = previewEnabled && bigEnough && isImage(file.filepath as string);
+  const imgInfo = `
+    can't read partial images yet...
+    actual size: ${file.size}}
+    downloaded: ${file.downloaded}}
+  `;
   return (
-    <Box paddingX={1}>
-      <TerminalInfoProvider>
-        <Box width={30} height={15}>
-          <Image src={file.filepath as string} alt="Preview" />
-        </Box>
-      </TerminalInfoProvider>
-    </Box>
+    shouldShow && (
+      <Box paddingX={1}>
+        <TerminalInfoProvider>
+          <Box width={30} height={15}>
+            <Image src={file.filepath as string} alt={imgInfo} />
+          </Box>
+        </TerminalInfoProvider>
+      </Box>
+    )
   );
 }

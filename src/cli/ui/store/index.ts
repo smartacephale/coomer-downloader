@@ -9,7 +9,7 @@ interface InkState {
 }
 
 export const useInkStore = create<InkState>((set) => ({
-  preview: true,
+  preview: false,
   switchPreview: () =>
     set((state) => ({
       preview: !state.preview,
