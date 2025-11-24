@@ -420,25 +420,44 @@ function argumentHander() {
 
 // src/cli/ui/index.tsx
 import { render } from "ink";
-import React7 from "react";
+import React9 from "react";
 
 // src/cli/ui/app.tsx
-import { Box as Box5 } from "ink";
-import React6 from "react";
+import { Box as Box7 } from "ink";
+import React8 from "react";
 
 // src/cli/ui/components/file.tsx
-import { Box, Spacer, Text as Text2 } from "ink";
-import React2 from "react";
+import { Box as Box2, Spacer as Spacer2, Text as Text3 } from "ink";
+import React3 from "react";
 
 // src/utils/strings.ts
 function b2mb(bytes) {
   return (bytes / 1048576).toFixed(2);
 }
 
+// src/cli/ui/store/index.ts
+import { create } from "zustand";
+var useInkStore = create((set) => ({
+  preview: true,
+  switchPreview: () => set((state) => ({
+    preview: !state.preview
+  })),
+  downloader: void 0,
+  setDownloader: (downloader) => set({ downloader })
+}));
+
+// src/cli/ui/components/preview.tsx
+import { Box } from "ink";
+import Image, { TerminalInfoProvider } from "ink-picture";
+import React from "react";
+function Preview({ file }) {
+  return /* @__PURE__ */ React.createElement(Box, { paddingX: 1 }, /* @__PURE__ */ React.createElement(TerminalInfoProvider, null, /* @__PURE__ */ React.createElement(Box, { width: 30, height: 15 }, /* @__PURE__ */ React.createElement(Image, { src: file.filepath, alt: "Preview" }))));
+}
+
 // src/cli/ui/components/spinner.tsx
 import spinners from "cli-spinners";
-import { Text } from "ink";
-import React, { useEffect, useState } from "react";
+import { Text as Text2 } from "ink";
+import React2, { useEffect, useState } from "react";
 function Spinner({ type = "dots" }) {
   const spinner = spinners[type];
   const randomFrame = spinner.frames.length * Math.random() | 0;
@@ -453,14 +472,16 @@ function Spinner({ type = "dots" }) {
       clearInterval(timer);
     };
   }, [spinner]);
-  return /* @__PURE__ */ React.createElement(Text, null, spinner.frames[frame]);
+  return /* @__PURE__ */ React2.createElement(Text2, null, spinner.frames[frame]);
 }
 
 // src/cli/ui/components/file.tsx
 function FileBox({ file }) {
   const percentage = Number(file.downloaded / file.size * 100).toFixed(2);
-  return /* @__PURE__ */ React2.createElement(
-    Box,
+  const previewEnabled = useInkStore((state) => state.preview);
+  const preview = previewEnabled && isImage(file.filepath) && /* @__PURE__ */ React3.createElement(Preview, { file });
+  return /* @__PURE__ */ React3.createElement(React3.Fragment, null, /* @__PURE__ */ React3.createElement(
+    Box2,
     {
       borderStyle: "single",
       borderColor: "magentaBright",
@@ -468,17 +489,17 @@ function FileBox({ file }) {
       paddingX: 1,
       flexDirection: "column"
     },
-    /* @__PURE__ */ React2.createElement(Box, null, /* @__PURE__ */ React2.createElement(Text2, { color: "blue", dimColor: true, wrap: "truncate-middle" }, file.name)),
-    /* @__PURE__ */ React2.createElement(Box, { flexDirection: "row-reverse" }, /* @__PURE__ */ React2.createElement(Text2, { color: "cyan", dimColor: true }, b2mb(file.downloaded), "/", file.size ? b2mb(file.size) : "\u221E", " MB"), /* @__PURE__ */ React2.createElement(Text2, { color: "redBright", dimColor: true }, file.size ? `  ${percentage}% ` : ""), /* @__PURE__ */ React2.createElement(Spacer, null), /* @__PURE__ */ React2.createElement(Text2, { color: "green", dimColor: true }, /* @__PURE__ */ React2.createElement(Spinner, null)))
-  );
+    /* @__PURE__ */ React3.createElement(Box2, null, /* @__PURE__ */ React3.createElement(Text3, { color: "blue", dimColor: true, wrap: "truncate-middle" }, file.name)),
+    /* @__PURE__ */ React3.createElement(Box2, { flexDirection: "row-reverse" }, /* @__PURE__ */ React3.createElement(Text3, { color: "cyan", dimColor: true }, b2mb(file.downloaded), "/", file.size ? b2mb(file.size) : "\u221E", " MB"), /* @__PURE__ */ React3.createElement(Text3, { color: "redBright", dimColor: true }, file.size ? `  ${percentage}% ` : ""), /* @__PURE__ */ React3.createElement(Spacer2, null), /* @__PURE__ */ React3.createElement(Text3, { color: "green", dimColor: true }, /* @__PURE__ */ React3.createElement(Spinner, null)))
+  ), preview);
 }
 
 // src/cli/ui/components/filelist.tsx
-import { Box as Box2, Text as Text3 } from "ink";
-import React3 from "react";
+import { Box as Box3, Text as Text4 } from "ink";
+import React4 from "react";
 function FileListStateBox({ filelist }) {
-  return /* @__PURE__ */ React3.createElement(
-    Box2,
+  return /* @__PURE__ */ React4.createElement(
+    Box3,
     {
       paddingX: 1,
       flexDirection: "column",
@@ -486,18 +507,25 @@ function FileListStateBox({ filelist }) {
       borderColor: "magenta",
       borderDimColor: true
     },
-    /* @__PURE__ */ React3.createElement(Box2, null, /* @__PURE__ */ React3.createElement(Box2, { marginRight: 1 }, /* @__PURE__ */ React3.createElement(Text3, { color: "cyanBright", dimColor: true }, "Found:")), /* @__PURE__ */ React3.createElement(Text3, { color: "blue", dimColor: true, wrap: "wrap" }, filelist.files.length)),
-    /* @__PURE__ */ React3.createElement(Box2, null, /* @__PURE__ */ React3.createElement(Box2, { marginRight: 1 }, /* @__PURE__ */ React3.createElement(Text3, { color: "cyanBright", dimColor: true }, "Downloaded:")), /* @__PURE__ */ React3.createElement(Text3, { color: "blue", dimColor: true, wrap: "wrap" }, filelist.getDownloaded().length)),
-    /* @__PURE__ */ React3.createElement(Box2, null, /* @__PURE__ */ React3.createElement(Box2, { width: 9 }, /* @__PURE__ */ React3.createElement(Text3, { color: "cyanBright", dimColor: true }, "Folder:")), /* @__PURE__ */ React3.createElement(Box2, { flexGrow: 1 }, /* @__PURE__ */ React3.createElement(Text3, { color: "blue", dimColor: true, wrap: "truncate-middle" }, filelist.dirPath)))
+    /* @__PURE__ */ React4.createElement(Box3, null, /* @__PURE__ */ React4.createElement(Box3, { marginRight: 1 }, /* @__PURE__ */ React4.createElement(Text4, { color: "cyanBright", dimColor: true }, "Found:")), /* @__PURE__ */ React4.createElement(Text4, { color: "blue", dimColor: true, wrap: "wrap" }, filelist.files.length)),
+    /* @__PURE__ */ React4.createElement(Box3, null, /* @__PURE__ */ React4.createElement(Box3, { marginRight: 1 }, /* @__PURE__ */ React4.createElement(Text4, { color: "cyanBright", dimColor: true }, "Downloaded:")), /* @__PURE__ */ React4.createElement(Text4, { color: "blue", dimColor: true, wrap: "wrap" }, filelist.getDownloaded().length)),
+    /* @__PURE__ */ React4.createElement(Box3, null, /* @__PURE__ */ React4.createElement(Box3, { width: 9 }, /* @__PURE__ */ React4.createElement(Text4, { color: "cyanBright", dimColor: true }, "Folder:")), /* @__PURE__ */ React4.createElement(Box3, { flexGrow: 1 }, /* @__PURE__ */ React4.createElement(Text4, { color: "blue", dimColor: true, wrap: "truncate-middle" }, filelist.dirPath)))
   );
 }
 
-// src/cli/ui/components/keyboardcontrolsinfo.tsx
-import { Box as Box3, Text as Text4 } from "ink";
-import React4 from "react";
+// src/cli/ui/components/keyboardinfo.tsx
+import { Box as Box4, Text as Text5 } from "ink";
+import React5 from "react";
+var info = {
+  "s ": "skip current file",
+  p: "on/off image preview"
+};
 function KeyboardControlsInfo() {
-  return /* @__PURE__ */ React4.createElement(
-    Box3,
+  const infoRender = Object.entries(info).map(([key, value]) => {
+    return /* @__PURE__ */ React5.createElement(Box4, { key }, /* @__PURE__ */ React5.createElement(Box4, { marginRight: 2 }, /* @__PURE__ */ React5.createElement(Text5, { color: "red", dimColor: true, bold: true }, key)), /* @__PURE__ */ React5.createElement(Text5, { dimColor: true, bold: false }, value));
+  });
+  return /* @__PURE__ */ React5.createElement(
+    Box4,
     {
       flexDirection: "column",
       paddingX: 1,
@@ -505,26 +533,34 @@ function KeyboardControlsInfo() {
       borderColor: "gray",
       borderDimColor: true
     },
-    /* @__PURE__ */ React4.createElement(Box3, null, /* @__PURE__ */ React4.createElement(Text4, { color: "red", dimColor: true, bold: true }, "Keyboard controls:")),
-    /* @__PURE__ */ React4.createElement(Box3, null, /* @__PURE__ */ React4.createElement(Box3, { marginRight: 2 }, /* @__PURE__ */ React4.createElement(Text4, { color: "red", dimColor: true, bold: true }, "s")), /* @__PURE__ */ React4.createElement(Text4, { dimColor: true, bold: false }, "skip current file"))
+    /* @__PURE__ */ React5.createElement(Box4, null, /* @__PURE__ */ React5.createElement(Text5, { color: "red", dimColor: true, bold: true }, "Keyboard controls:")),
+    infoRender
   );
 }
 
+// src/cli/ui/components/loading.tsx
+import { Box as Box5, Text as Text6 } from "ink";
+import React6 from "react";
+function Loading() {
+  return /* @__PURE__ */ React6.createElement(Box5, { paddingX: 1, borderDimColor: true, flexDirection: "column" }, /* @__PURE__ */ React6.createElement(Box5, { alignSelf: "center" }, /* @__PURE__ */ React6.createElement(Text6, { dimColor: true, color: "redBright" }, "Fetching Data")), /* @__PURE__ */ React6.createElement(Box5, { alignSelf: "center" }, /* @__PURE__ */ React6.createElement(Text6, { color: "blueBright", dimColor: true }, /* @__PURE__ */ React6.createElement(Spinner, { type: "grenade" }))));
+}
+
 // src/cli/ui/components/titlebar.tsx
-import { Box as Box4, Spacer as Spacer2, Text as Text5 } from "ink";
-import React5 from "react";
+import { Box as Box6, Spacer as Spacer3, Text as Text7 } from "ink";
+import React7 from "react";
 
 // package.json
-var version = "3.3.0";
+var version = "3.3.1";
 
 // src/cli/ui/components/titlebar.tsx
 function TitleBar() {
-  return /* @__PURE__ */ React5.createElement(Box4, null, /* @__PURE__ */ React5.createElement(Spacer2, null), /* @__PURE__ */ React5.createElement(Box4, { borderColor: "magenta", borderStyle: "arrow" }, /* @__PURE__ */ React5.createElement(Text5, { color: "cyanBright" }, "Coomer-Downloader ", version)), /* @__PURE__ */ React5.createElement(Spacer2, null));
+  return /* @__PURE__ */ React7.createElement(Box6, null, /* @__PURE__ */ React7.createElement(Spacer3, null), /* @__PURE__ */ React7.createElement(Box6, { borderColor: "magenta", borderStyle: "arrow" }, /* @__PURE__ */ React7.createElement(Text7, { color: "cyanBright" }, "Coomer-Downloader ", version)), /* @__PURE__ */ React7.createElement(Spacer3, null));
 }
 
 // src/cli/ui/hooks/downloader.ts
 import { useEffect as useEffect2, useState as useState2 } from "react";
-var useDownloaderHook = (downloader) => {
+var useDownloaderHook = () => {
+  const downloader = useInkStore((state) => state.downloader);
   const filelist = downloader?.filelist;
   const [_, setHelper] = useState2(0);
   useEffect2(() => {
@@ -534,31 +570,38 @@ var useDownloaderHook = (downloader) => {
       }
     });
   });
-  return { filelist };
 };
 
 // src/cli/ui/hooks/input.ts
 import { useInput } from "ink";
-var useInputHook = (downloader) => {
+var useInputHook = () => {
+  const downloader = useInkStore((state) => state.downloader);
+  const switchPreview = useInkStore((state) => state.switchPreview);
   useInput((input) => {
     if (input === "s") {
-      downloader.skip();
+      downloader?.skip();
+    }
+    if (input === "p") {
+      switchPreview();
     }
   });
 };
 
 // src/cli/ui/app.tsx
-function App({ downloader }) {
-  const { filelist } = useDownloaderHook(downloader);
-  useInputHook(downloader);
-  return /* @__PURE__ */ React6.createElement(Box5, { borderStyle: "single", flexDirection: "column", borderColor: "blue", width: 80 }, /* @__PURE__ */ React6.createElement(TitleBar, null), /* @__PURE__ */ React6.createElement(Box5, null, /* @__PURE__ */ React6.createElement(Box5, null, /* @__PURE__ */ React6.createElement(FileListStateBox, { filelist })), /* @__PURE__ */ React6.createElement(Box5, { flexBasis: 29 }, /* @__PURE__ */ React6.createElement(KeyboardControlsInfo, null))), filelist.getActiveFiles().map((file) => {
-    return /* @__PURE__ */ React6.createElement(FileBox, { file, key: file.name });
-  }));
+function App() {
+  useInputHook();
+  useDownloaderHook();
+  const downloader = useInkStore((state) => state.downloader);
+  const filelist = downloader?.filelist;
+  const isFilelist = filelist instanceof CoomerFileList;
+  return /* @__PURE__ */ React8.createElement(Box7, { borderStyle: "single", flexDirection: "column", borderColor: "blue", width: 80 }, /* @__PURE__ */ React8.createElement(TitleBar, null), !isFilelist ? /* @__PURE__ */ React8.createElement(Loading, null) : /* @__PURE__ */ React8.createElement(React8.Fragment, null, /* @__PURE__ */ React8.createElement(Box7, null, /* @__PURE__ */ React8.createElement(Box7, null, /* @__PURE__ */ React8.createElement(FileListStateBox, { filelist })), /* @__PURE__ */ React8.createElement(Box7, { flexBasis: 29 }, /* @__PURE__ */ React8.createElement(KeyboardControlsInfo, null))), filelist.getActiveFiles().map((file) => {
+    return /* @__PURE__ */ React8.createElement(FileBox, { file, key: file.name });
+  })));
 }
 
 // src/cli/ui/index.tsx
-function createReactInk(downloader) {
-  return render(/* @__PURE__ */ React7.createElement(App, { downloader }));
+function createReactInk() {
+  return render(/* @__PURE__ */ React9.createElement(App, null));
 }
 
 // src/services/downloader.ts
@@ -713,16 +756,14 @@ var Downloader = class {
 
 // src/index.ts
 async function run() {
+  createReactInk();
   const { url, dir, media, include, exclude, skip } = argumentHander();
   const filelist = await apiHandler(url);
-  filelist.setDirPath(dir);
-  filelist.skip(skip);
-  filelist.filterByText(include, exclude);
-  filelist.filterByMediaType(media);
+  filelist.setDirPath(dir).skip(skip).filterByText(include, exclude).filterByMediaType(media);
   await filelist.calculateFileSizes();
   setGlobalHeaders({ Referer: url });
   const downloader = new Downloader(filelist);
-  createReactInk(downloader);
+  useInkStore.getState().setDownloader(downloader);
   await downloader.downloadFiles();
   process2.kill(process2.pid, "SIGINT");
 }
