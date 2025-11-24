@@ -2,6 +2,7 @@
 
 [![NPM](https://nodei.co/npm/coomer-downloader.svg?color=lightgrey)](https://www.npmjs.com/package/coomer-downloader)
 
+<img src="https://github.com/smartacephale/coomer-downloader/blob/main/docs/images/Screenshot%2001.jpg?raw=true" width="500"></img>
 
 ### Features
 * script keeps track of downloaded files and resume downloading if it's crashed. 
