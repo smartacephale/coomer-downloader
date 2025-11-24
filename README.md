@@ -5,7 +5,8 @@
 <img src="https://github.com/smartacephale/coomer-downloader/blob/main/docs/images/Screenshot%2001.jpg?raw=true" width="500"></img>
 
 ### Features
-* script keeps track of downloaded files and resume downloading if it's crashed. 
+* Script keeps track of downloaded files and resume downloading if it's crashed.
+* Preview images in console. For now partial downloads not supported.
 
 ### Install:
 ```
