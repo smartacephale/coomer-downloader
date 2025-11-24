@@ -1,33 +1,40 @@
 import { Box } from 'ink';
 import React from 'react';
-import type { Downloader } from '../../services/downloader';
-import { FileBox, FileListStateBox, KeyboardControlsInfo, TitleBar } from './components';
+import { CoomerFileList } from '../../services/file';
+import { FileBox, FileListStateBox, KeyboardControlsInfo, Loading, TitleBar } from './components';
 import { useDownloaderHook } from './hooks/downloader';
 import { useInputHook } from './hooks/input';
+import { useInkStore } from './store';
 
-interface AppProps {
-  downloader: Downloader;
-}
+export function App() {
+  useInputHook();
+  useDownloaderHook();
 
-export function App({ downloader }: AppProps) {
-  const { filelist } = useDownloaderHook(downloader);
-  useInputHook(downloader);
+  const downloader = useInkStore((state) => state.downloader);
+  const filelist = downloader?.filelist;
+  const isFilelist = filelist instanceof CoomerFileList;
 
   return (
     <Box borderStyle="single" flexDirection="column" borderColor="blue" width={80}>
       <TitleBar />
-      <Box>
-        <Box>
-          <FileListStateBox filelist={filelist} />
-        </Box>
-        <Box flexBasis={29}>
-          <KeyboardControlsInfo />
-        </Box>
-      </Box>
+      {!isFilelist ? (
+        <Loading />
+      ) : (
+        <>
+          <Box>
+            <Box>
+              <FileListStateBox filelist={filelist} />
+            </Box>
+            <Box flexBasis={29}>
+              <KeyboardControlsInfo />
+            </Box>
+          </Box>
 
-      {filelist.getActiveFiles().map((file) => {
-        return <FileBox file={file} key={file.name} />;
-      })}
+          {filelist.getActiveFiles().map((file) => {
+            return <FileBox file={file} key={file.name} />;
+          })}
+        </>
+      )}
     </Box>
   );
 }

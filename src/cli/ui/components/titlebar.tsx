@@ -4,7 +4,7 @@ import { version } from '../../../../package.json';
 
 export function TitleBar() {
   return (
-    <Box >
+    <Box>
       <Spacer></Spacer>
       <Box borderColor={'magenta'} borderStyle={'arrow'}>
         <Text color={'cyanBright'}>Coomer-Downloader {version}</Text>

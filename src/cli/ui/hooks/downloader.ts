@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import type { Downloader } from '../../../services/downloader';
+import { useInkStore } from '../store';
 
-export const useDownloaderHook = (downloader: Downloader) => {
+export const useDownloaderHook = () => {
+  const downloader = useInkStore((state) => state.downloader);
   const filelist = downloader?.filelist;
+
   const [_, setHelper] = useState(0);
 
   useEffect(() => {
@@ -16,6 +18,4 @@ export const useDownloaderHook = (downloader: Downloader) => {
       }
     });
   });
-
-  return { filelist };
 };

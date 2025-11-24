@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env -S node --no-warnings=ExperimentalWarning
 
 // src/index.ts
 import process2 from "node:process";
@@ -426,7 +426,7 @@ import React7 from "react";
 import { Box as Box5 } from "ink";
 import React6 from "react";
 
-// src/cli/ui/components/filebox.tsx
+// src/cli/ui/components/file.tsx
 import { Box, Spacer, Text as Text2 } from "ink";
 import React2 from "react";
 
@@ -456,7 +456,7 @@ function Spinner({ type = "dots" }) {
   return /* @__PURE__ */ React.createElement(Text, null, spinner.frames[frame]);
 }
 
-// src/cli/ui/components/filebox.tsx
+// src/cli/ui/components/file.tsx
 function FileBox({ file }) {
   const percentage = Number(file.downloaded / file.size * 100).toFixed(2);
   return /* @__PURE__ */ React2.createElement(
@@ -473,7 +473,7 @@ function FileBox({ file }) {
   );
 }
 
-// src/cli/ui/components/fileliststatebox.tsx
+// src/cli/ui/components/filelist.tsx
 import { Box as Box2, Text as Text3 } from "ink";
 import React3 from "react";
 function FileListStateBox({ filelist }) {

@@ -1,11 +1,17 @@
 import { useInput } from 'ink';
-import type { Downloader } from '../../../services/downloader';
+import { useInkStore } from '../store';
 
 // problems with tsx watch
-export const useInputHook = (downloader: Downloader) => {
+export const useInputHook = () => {
+  const downloader = useInkStore((state) => state.downloader);
+  const switchPreview = useInkStore((state) => state.switchPreview);
+
   useInput((input) => {
     if (input === 's') {
-      downloader.skip();
+      downloader?.skip();
+    }
+    if (input === 'p') {
+      switchPreview();
     }
   });
 };

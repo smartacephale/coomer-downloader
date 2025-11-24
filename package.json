@@ -1,6 +1,6 @@
 {
   "name": "coomer-downloader",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "author": "smartacephal",
   "license": "MIT",
   "description": "Downloads images/videos from Coomer/Kemono, Bunkr, GoFile, Reddit-NSFW user posts",
@@ -42,11 +42,13 @@
     "cli-spinners": "^3.3.0",
     "http-cookie-agent": "^6.0.0",
     "ink": "^6.5.1",
+    "ink-picture": "^1.3.3",
     "react": "^19.2.0",
     "rxjs": "^7.8.2",
     "tough-cookie": "5.1.2",
     "undici": "^6.22.0",
-    "yargs": "^17.7.2"
+    "yargs": "^17.7.2",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",
