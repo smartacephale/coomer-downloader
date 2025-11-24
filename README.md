@@ -6,6 +6,7 @@
 
 ### Features
 * Script keeps track of downloaded files and resume downloading if it's crashed.
+* Skip files, filter by text and media type
 * Preview images in console. For now partial downloads not supported.
 
 ### Install:
