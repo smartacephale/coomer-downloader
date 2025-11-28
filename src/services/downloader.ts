@@ -41,7 +41,6 @@ export class Downloader {
     const signal = this.abortController.signal;
     const subject = this.subject;
     const { timer } = Timer.withAbortController(this.chunkTimeout, this.abortControllerSubject);
-    let i: NodeJS.Timeout | undefined;
 
     try {
       const fileStream = fs.createWriteStream(file.filepath as string, { flags: 'a' });
@@ -74,7 +73,6 @@ export class Downloader {
     } finally {
       subject.next({ type: 'CHUNK_DOWNLOADING_END' });
       timer.stop();
-      clearInterval(i);
     }
   }
 

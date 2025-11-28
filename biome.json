@@ -20,7 +20,8 @@
     "formatter": {
       "quoteStyle": "single",
       "semicolons": "always"
-    }
+    },
+    "jsxRuntime": "reactClassic"
   },
   "linter": {
     "enabled": true,

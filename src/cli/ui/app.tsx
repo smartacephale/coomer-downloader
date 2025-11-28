@@ -25,7 +25,7 @@ export function App() {
             <Box>
               <FileListStateBox filelist={filelist} />
             </Box>
-            <Box flexBasis={29}>
+            <Box flexBasis={30}>
               <KeyboardControlsInfo />
             </Box>
           </Box>
