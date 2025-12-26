@@ -35,6 +35,15 @@ function parseQuery(query) {
 function filterString(text, include, exclude) {
   return includesAllWords(text, parseQuery(include)) && includesNoWords(text, parseQuery(exclude));
 }
+function parseSizeValue(s) {
+  if (!s) return NaN;
+  const m = s.match(/^([0-9]+(?:\.[0-9]+)?)(b|kb|mb|gb)?$/i);
+  if (!m) return NaN;
+  const val = parseFloat(m[1]);
+  const unit = (m[2] || "b").toLowerCase();
+  const mult = unit === "kb" ? 1024 : unit === "mb" ? 1024 ** 2 : unit === "gb" ? 1024 ** 3 : 1;
+  return Math.floor(val * mult);
+}
 
 // src/utils/io.ts
 import fs from "node:fs";
@@ -49,6 +58,12 @@ function mkdir(filepath) {
   if (!fs.existsSync(filepath)) {
     fs.mkdirSync(filepath, { recursive: true });
   }
+}
+function sanitizeFilename(name) {
+  if (!name) return name;
+  const invalid = /[<>:\"/\\|?*\x00-\x1F]/g;
+  const cleaned = name.replace(invalid, "-").replace(/\r|\n/g, "");
+  return cleaned.replace(/\s+/g, " ").trim();
 }
 
 // src/services/file.ts
@@ -88,7 +103,8 @@ var CoomerFileList = class {
       this.dirPath = path.join(os.homedir(), path.join(dir, dirName));
     }
     this.files.forEach((file) => {
-      file.filepath = path.join(this.dirPath, file.name);
+      const safeName = sanitizeFilename(file.name) || file.name;
+      file.filepath = path.join(this.dirPath, safeName);
     });
     return this;
   }
@@ -239,7 +255,13 @@ async function getUserFiles(user) {
     const postFiles = [...p.attachments, p.file].filter((f) => f.path).map((f, i) => {
       const ext = f.name.split(".").pop();
       const name = `${datentitle} ${i + 1}.${ext}`;
-      const url = `${user.domain}/${f.path}`;
+      const normalizedPath = f.path.replace(/^\/+/, "/");
+      let url = "";
+      try {
+        url = new URL(normalizedPath, user.domain).toString();
+      } catch (e) {
+        url = `${user.domain}/${normalizedPath.replace(/^\//, "")}`;
+      }
       return CoomerFile.from({ name, url, content });
     });
     filelist.files.push(...postFiles);
@@ -411,6 +433,10 @@ function argumentHander() {
     type: "string",
     default: "",
     description: "Filter file names by a comma-separated list of keywords to exclude"
+  }).option("min-size", {
+    type: "string",
+    default: "",
+    description: 'Minimum file size to download. Example: "1mb" or "500kb"'
   }).option("skip", {
     type: "number",
     default: 0,
@@ -661,11 +687,12 @@ var Timer = class _Timer {
 
 // src/services/downloader.ts
 var Downloader = class {
-  constructor(filelist, chunkTimeout = 3e4, chunkFetchRetries = 5, fetchRetries = 7) {
+  constructor(filelist, chunkTimeout = 3e4, chunkFetchRetries = 5, fetchRetries = 7, minSize) {
     this.filelist = filelist;
     this.chunkTimeout = chunkTimeout;
     this.chunkFetchRetries = chunkFetchRetries;
     this.fetchRetries = fetchRetries;
+    this.minSize = minSize;
     this.setAbortControllerListener();
   }
   subject = new Subject();
@@ -729,6 +756,16 @@ var Downloader = class {
       if (!contentLength && file.downloaded > 0) return;
       const restFileSize = parseInt(contentLength);
       file.size = restFileSize + file.downloaded;
+      if (this.minSize && file.size < this.minSize) {
+        try {
+          if (file.filepath) {
+            await fs2.promises.unlink(file.filepath).catch(() => null);
+          }
+        } catch {
+        }
+        this.subject.next({ type: "FILE_SKIP" });
+        return;
+      }
       if (file.size > file.downloaded && response.body) {
         const stream = Readable.fromWeb(response.body);
         stream.setMaxListeners(20);
@@ -765,14 +802,22 @@ var Downloader = class {
 // src/index.ts
 async function run() {
   createReactInk();
-  const { url, dir, media, include, exclude, skip } = argumentHander();
+  const { url, dir, media, include, exclude, minSize, skip } = argumentHander();
   const filelist = await apiHandler(url);
   filelist.setDirPath(dir).skip(skip).filterByText(include, exclude).filterByMediaType(media);
+  const minSizeBytes = minSize ? parseSizeValue(minSize) : void 0;
   await filelist.calculateFileSizes();
   setGlobalHeaders({ Referer: url });
-  const downloader = new Downloader(filelist);
+  const downloader = new Downloader(filelist, void 0, void 0, void 0, minSizeBytes);
   useInkStore.getState().setDownloader(downloader);
   await downloader.downloadFiles();
-  process2.kill(process2.pid, "SIGINT");
 }
-run();
+(async () => {
+  try {
+    await run();
+    process2.exit(0);
+  } catch (err) {
+    console.error("Fatal error:", err);
+    process2.exit(1);
+  }
+})();
