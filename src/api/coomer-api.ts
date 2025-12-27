@@ -63,7 +63,15 @@ export async function getUserFiles(user: CoomerAPIUser): Promise<CoomerFileList>
       .map((f, i) => {
         const ext = f.name.split('.').pop();
         const name = `${datentitle} ${i + 1}.${ext}`;
-        const url = `${user.domain}/${f.path}`;
+        // Normalize f.path to avoid protocol-relative or multiple-leading-slash paths
+        const normalizedPath = f.path.replace(/^\/+/, '/');
+        let url = '';
+        try {
+          url = new URL(normalizedPath, user.domain).toString();
+        } catch (e) {
+          // Fallback: join with a single slash
+          url = `${user.domain}/${normalizedPath.replace(/^\//, '')}`;
+        }
         return CoomerFile.from({ name, url, content });
       });
 

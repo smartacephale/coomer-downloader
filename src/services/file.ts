@@ -2,7 +2,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { MediaType } from '../types';
 import { filterString, testMediaType } from '../utils/filters';
-import { getFileSize } from '../utils/io';
+import { getFileSize, sanitizeFilename } from '../utils/io';
 
 interface ICoomerFile {
   name: string;
@@ -56,7 +56,8 @@ export class CoomerFileList {
     }
 
     this.files.forEach((file) => {
-      file.filepath = path.join(this.dirPath as string, file.name);
+      const safeName = sanitizeFilename(file.name) || file.name;
+      file.filepath = path.join(this.dirPath as string, safeName);
     });
 
     return this;

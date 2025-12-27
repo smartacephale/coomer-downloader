@@ -7,6 +7,7 @@ type ArgumentHandlerResult = {
   media: string;
   include: string;
   exclude: string;
+  minSize: string;
   skip: number;
 };
 
@@ -41,6 +42,11 @@ export function argumentHander(): ArgumentHandlerResult {
       default: '',
       description: 'Filter file names by a comma-separated list of keywords to exclude',
     })
+      .option('min-size', {
+        type: 'string',
+        default: '',
+        description: 'Minimum file size to download. Example: "1mb" or "500kb"',
+      })
     .option('skip', {
       type: 'number',
       default: 0,

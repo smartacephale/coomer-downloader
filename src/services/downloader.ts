@@ -28,6 +28,7 @@ export class Downloader {
     public chunkTimeout = 30_000,
     public chunkFetchRetries = 5,
     public fetchRetries = 7,
+    public minSize?: number,
   ) {
     this.setAbortControllerListener();
   }
@@ -99,6 +100,20 @@ export class Downloader {
 
       const restFileSize = parseInt(contentLength);
       file.size = restFileSize + file.downloaded;
+
+      // If a minimum size is configured and the discovered file size is smaller, remove any
+      // partial file (even if empty) and skip downloading.
+      if (this.minSize && file.size < this.minSize) {
+        try {
+          if (file.filepath) {
+            await fs.promises.unlink(file.filepath as string).catch(() => null);
+          }
+        } catch {
+          // ignore errors when attempting to delete
+        }
+        this.subject.next({ type: 'FILE_SKIP' });
+        return;
+      }
 
       if (file.size > file.downloaded && response.body) {
         const stream = Readable.fromWeb(response.body);

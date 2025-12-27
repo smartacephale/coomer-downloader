@@ -13,3 +13,13 @@ export function mkdir(filepath: string) {
     fs.mkdirSync(filepath, { recursive: true });
   }
 }
+
+export function sanitizeFilename(name: string) {
+  if (!name) return name;
+  // Remove control characters and replace characters invalid on Windows
+  // < > : " / \ | ? * and newline/carriage returns
+  const invalid = /[<>:\"/\\|?*\x00-\x1F]/g;
+  const cleaned = name.replace(invalid, '-').replace(/\r|\n/g, '');
+  // Collapse multiple spaces and trim
+  return cleaned.replace(/\s+/g, ' ').trim();
+}
