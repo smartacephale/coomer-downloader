@@ -1,4 +1,4 @@
-export type MediaType = 'video' | 'image' | 'all';
+export type MediaType = 'video' | 'image';
 
 export type DownloaderSubjectSignal =
   | 'FILES_DOWNLOADING_START'

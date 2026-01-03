@@ -8,7 +8,6 @@ async function getUserPage(user: string, offset: number) {
 }
 
 async function getUserPosts(user: string): Promise<string[]> {
-  console.log('Fetching user posts...');
   const posts = [];
   for (let i = 1; i < 100000; i++) {
     const page = await getUserPage(user, i);
@@ -26,7 +25,6 @@ async function getUserPosts(user: string): Promise<string[]> {
 }
 
 async function getPostsData(posts: string[]): Promise<CoomerFileList> {
-  console.log('Fetching posts data...');
   const filelist = new CoomerFileList();
   for (const post of posts) {
     const page = await fetch(post).then((r) => r.text());
@@ -53,7 +51,9 @@ async function getPostsData(posts: string[]): Promise<CoomerFileList> {
 
 export async function getRedditData(url: string): Promise<CoomerFileList> {
   const user = url.match(/u\/(\w+)/)?.[1] as string;
+  console.log('Fetching user posts...');
   const posts = await getUserPosts(user);
+  console.log('Fetching posts data...');
   const filelist = await getPostsData(posts);
   filelist.dirName = `${user}-reddit`;
   return filelist;

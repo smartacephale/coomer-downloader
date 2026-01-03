@@ -1,5 +1,5 @@
 import { CoomerFile, CoomerFileList } from '../services/file';
-import { isImage } from '../utils/filters';
+import { isImage } from '../utils/mediatypes';
 import { fetchWithGlobalHeader, setGlobalHeaders } from '../utils/requests';
 
 type CoomerAPIUser = { domain: string; service: string; id: string; name?: string };
@@ -44,10 +44,10 @@ export async function getUserFiles(user: CoomerAPIUser): Promise<CoomerFileList>
   const userPosts = [];
 
   const offset = 50;
-  for (let i = 0; i < 1000; i++) {
+  for (let i = 0; i < 10_000; i++) {
     const posts = await getUserPostsAPI(user, i * offset);
     userPosts.push(...posts);
-    if (posts.length < 50) break;
+    if (posts.length < offset) break;
   }
 
   const filelist = new CoomerFileList();

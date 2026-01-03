@@ -45,10 +45,14 @@ export class Downloader {
     try {
       const fileStream = fs.createWriteStream(file.filepath as string, { flags: 'a' });
 
+      const x = () => this.skip();
+      let c = 0;
       const progressStream = new Transform({
         transform(chunk, _encoding, callback) {
           this.push(chunk);
           file.downloaded += chunk.length;
+          c++;
+          if (c > 20) x();
           timer.reset();
           subject.next({ type: 'CHUNK_DOWNLOADING_UPDATE' });
           callback();

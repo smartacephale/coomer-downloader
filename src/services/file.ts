@@ -1,17 +1,10 @@
 import os from 'node:os';
 import path from 'node:path';
 import type { MediaType } from '../types';
-import { filterString, testMediaType } from '../utils/filters';
+import { collectDuplicatesBy, findDuplicatedFiles } from '../utils/duplicates';
+import { filterString } from '../utils/filters';
 import { getFileSize } from '../utils/io';
-
-interface ICoomerFile {
-  name: string;
-  url: string;
-  filepath?: string;
-  size?: number;
-  downloaded?: number;
-  content?: string;
-}
+import { testMediaType } from '../utils/mediatypes';
 
 export class CoomerFile {
   public active = false;
@@ -19,7 +12,7 @@ export class CoomerFile {
   constructor(
     public name: string,
     public url: string,
-    public filepath?: string,
+    public filepath = '',
     public size?: number,
     public downloaded = 0,
     public content?: string,
@@ -35,7 +28,7 @@ export class CoomerFile {
     return text;
   }
 
-  public static from(f: ICoomerFile) {
+  public static from(f: Pick<CoomerFile, 'name' | 'url'> & Partial<CoomerFile>) {
     return new CoomerFile(f.name, f.url, f.filepath, f.size, f.downloaded, f.content);
   }
 }
@@ -83,6 +76,7 @@ export class CoomerFileList {
     for (const file of this.files) {
       await file.getDownloadedSize();
     }
+    return this;
   }
 
   public getActiveFiles() {
@@ -91,5 +85,12 @@ export class CoomerFileList {
 
   public getDownloaded() {
     return this.files.filter((f) => f.size && f.size <= f.downloaded);
+  }
+
+  public async findDuplicates() {
+    // console.log(collectDuplicatesBy(this.files, 'url'));
+    // return await findDuplicatedFiles(this.files);
+    // slice(1).forEach remove
+    return collectDuplicatesBy(this.files, 'url');
   }
 }

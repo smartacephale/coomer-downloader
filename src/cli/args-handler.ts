@@ -4,7 +4,7 @@ import { hideBin } from 'yargs/helpers';
 type ArgumentHandlerResult = {
   url: string;
   dir: string;
-  media: string;
+  media?: string;
   include: string;
   exclude: string;
   skip: number;
@@ -26,8 +26,7 @@ export function argumentHander(): ArgumentHandlerResult {
     })
     .option('media', {
       type: 'string',
-      choices: ['video', 'image', 'all'],
-      default: 'all',
+      choices: ['video', 'image'],
       description:
         "The type of media to download: 'video', 'image', or 'all'. 'all' is the default.",
     })
