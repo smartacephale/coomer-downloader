@@ -11,16 +11,41 @@ import { fetch } from "undici";
 import os from "node:os";
 import path from "node:path";
 
+// src/logger/index.ts
+import pino from "pino";
+var logger = pino(
+  {
+    level: "debug"
+  },
+  pino.destination({
+    dest: "./debug.log",
+    append: false,
+    sync: true
+  })
+);
+var logger_default = logger;
+
+// src/utils/duplicates.ts
+function collectUniquesAndDuplicatesBy(xs, k) {
+  const seen = /* @__PURE__ */ new Set();
+  return xs.reduce(
+    (acc, item) => {
+      if (seen.has(item[k])) {
+        acc.duplicates.push(item);
+      } else {
+        seen.add(item[k]);
+        acc.uniques.push(item);
+      }
+      return acc;
+    },
+    { uniques: [], duplicates: [] }
+  );
+}
+function removeDuplicatesBy(xs, k) {
+  return [...new Map(xs.map((x) => [x[k], x])).values()];
+}
+
 // src/utils/filters.ts
-function isImage(name) {
-  return /\.(jpg|jpeg|png|gif|bmp|tiff|webp|avif)$/i.test(name);
-}
-function isVideo(name) {
-  return /\.(mp4|m4v|avi|mov|mkv|webm|flv|wmv|mpeg|mpg|3gp)$/i.test(name);
-}
-function testMediaType(name, type) {
-  return type === "all" ? true : type === "image" ? isImage(name) : isVideo(name);
-}
 function includesAllWords(str, words) {
   if (!words.length) return true;
   return words.every((w) => str.includes(w));
@@ -35,9 +60,21 @@ function parseQuery(query) {
 function filterString(text, include, exclude) {
   return includesAllWords(text, parseQuery(include)) && includesNoWords(text, parseQuery(exclude));
 }
+function parseSizeValue(s) {
+  if (!s) return NaN;
+  const m = s.match(/^([0-9]+(?:\.[0-9]+)?)(b|kb|mb|gb)?$/i);
+  if (!m) return NaN;
+  const val = parseFloat(m[1]);
+  const unit = (m[2] || "b").toLowerCase();
+  const mult = unit === "kb" ? 1024 : unit === "mb" ? 1024 ** 2 : unit === "gb" ? 1024 ** 3 : 1;
+  return Math.floor(val * mult);
+}
 
 // src/utils/io.ts
+import { createHash } from "node:crypto";
 import fs from "node:fs";
+import { access, constants, unlink } from "node:fs/promises";
+import { pipeline } from "node:stream/promises";
 async function getFileSize(filepath) {
   let size = 0;
   if (fs.existsSync(filepath)) {
@@ -45,15 +82,40 @@ async function getFileSize(filepath) {
   }
   return size;
 }
+async function getFileHash(filepath) {
+  const hash = createHash("sha256");
+  const filestream = fs.createReadStream(filepath);
+  await pipeline(filestream, hash);
+  return hash.digest("hex");
+}
 function mkdir(filepath) {
   if (!fs.existsSync(filepath)) {
     fs.mkdirSync(filepath, { recursive: true });
   }
 }
+async function deleteFile(path2) {
+  await access(path2, constants.F_OK);
+  await unlink(path2);
+}
+function sanitizeFilename(name) {
+  if (!name) return name;
+  return name.replace(/[<>"/\\|?*\x00-\x1F]/g, "-").replace(/\s+/g, " ").trim().replace(/[.]+$/, "");
+}
+
+// src/utils/mediatypes.ts
+function isImage(name) {
+  return /\.(jpg|jpeg|png|gif|bmp|tiff|webp|avif)$/i.test(name);
+}
+function isVideo(name) {
+  return /\.(mp4|m4v|avi|mov|mkv|webm|flv|wmv|mpeg|mpg|3gp)$/i.test(name);
+}
+function testMediaType(name, type) {
+  return type === "image" ? isImage(name) : isVideo(name);
+}
 
 // src/services/file.ts
 var CoomerFile = class _CoomerFile {
-  constructor(name, url, filepath, size, downloaded = 0, content) {
+  constructor(name, url, filepath = "", size, downloaded = 0, content) {
     this.name = name;
     this.url = url;
     this.filepath = filepath;
@@ -62,6 +124,7 @@ var CoomerFile = class _CoomerFile {
     this.content = content;
   }
   active = false;
+  hash;
   async getDownloadedSize() {
     this.downloaded = await getFileSize(this.filepath);
     return this;
@@ -88,7 +151,8 @@ var CoomerFileList = class {
       this.dirPath = path.join(os.homedir(), path.join(dir, dirName));
     }
     this.files.forEach((file) => {
-      file.filepath = path.join(this.dirPath, file.name);
+      const safeName = sanitizeFilename(file.name) || file.name;
+      file.filepath = path.join(this.dirPath, safeName);
     });
     return this;
   }
@@ -110,12 +174,28 @@ var CoomerFileList = class {
     for (const file of this.files) {
       await file.getDownloadedSize();
     }
+    return this;
   }
   getActiveFiles() {
     return this.files.filter((f) => f.active);
   }
   getDownloaded() {
     return this.files.filter((f) => f.size && f.size <= f.downloaded);
+  }
+  async removeDuplicatesByHash() {
+    for (const file of this.files) {
+      file.hash = await getFileHash(file.filepath);
+    }
+    const { duplicates } = collectUniquesAndDuplicatesBy(this.files, "hash");
+    console.log({ duplicates });
+    logger_default.debug(`duplicates: ${JSON.stringify(duplicates)}`);
+    duplicates.forEach((f) => {
+      deleteFile(f.filepath);
+    });
+  }
+  removeURLDuplicates() {
+    this.files = removeDuplicatesBy(this.files, "url");
+    return this;
   }
 };
 
@@ -225,10 +305,10 @@ async function getUserPostsAPI(user, offset) {
 async function getUserFiles(user) {
   const userPosts = [];
   const offset = 50;
-  for (let i = 0; i < 1e3; i++) {
+  for (let i = 0; i < 1e4; i++) {
     const posts = await getUserPostsAPI(user, i * offset);
     userPosts.push(...posts);
-    if (posts.length < 50) break;
+    if (posts.length < offset) break;
   }
   const filelist = new CoomerFileList();
   for (const p of userPosts) {
@@ -239,12 +319,22 @@ async function getUserFiles(user) {
     const postFiles = [...p.attachments, p.file].filter((f) => f.path).map((f, i) => {
       const ext = f.name.split(".").pop();
       const name = `${datentitle} ${i + 1}.${ext}`;
-      const url = `${user.domain}/${f.path}`;
+      const url = getUrl(f, user);
       return CoomerFile.from({ name, url, content });
     });
     filelist.files.push(...postFiles);
   }
   return filelist;
+}
+function getUrl(f, user) {
+  const normalizedPath = f.path.replace(/^\/+/, "/");
+  let url = "";
+  try {
+    url = new URL(normalizedPath, user.domain).toString();
+  } catch (_) {
+    url = `${user.domain}/${normalizedPath.replace(/^\//, "")}`;
+  }
+  return url;
 }
 async function parseUser(url) {
   const [_, domain, service, id] = url.match(
@@ -320,7 +410,6 @@ async function getUserPage(user, offset) {
   return fetch4(url).then((r) => r.text());
 }
 async function getUserPosts(user) {
-  console.log("Fetching user posts...");
   const posts = [];
   for (let i = 1; i < 1e5; i++) {
     const page = await getUserPage(user, i);
@@ -332,7 +421,6 @@ async function getUserPosts(user) {
   return posts;
 }
 async function getPostsData(posts) {
-  console.log("Fetching posts data...");
   const filelist = new CoomerFileList();
   for (const post of posts) {
     const page = await fetch4(post).then((r) => r.text());
@@ -349,7 +437,9 @@ async function getPostsData(posts) {
 }
 async function getRedditData(url) {
   const user = url.match(/u\/(\w+)/)?.[1];
+  console.log("Fetching user posts...");
   const posts = await getUserPosts(user);
+  console.log("Fetching posts data...");
   const filelist = await getPostsData(posts);
   filelist.dirName = `${user}-reddit`;
   return filelist;
@@ -400,8 +490,7 @@ function argumentHander() {
     default: "./"
   }).option("media", {
     type: "string",
-    choices: ["video", "image", "all"],
-    default: "all",
+    choices: ["video", "image"],
     description: "The type of media to download: 'video', 'image', or 'all'. 'all' is the default."
   }).option("include", {
     type: "string",
@@ -411,10 +500,22 @@ function argumentHander() {
     type: "string",
     default: "",
     description: "Filter file names by a comma-separated list of keywords to exclude"
+  }).option("min-size", {
+    type: "string",
+    default: "",
+    description: 'Minimum file size to download. Example: "1mb" or "500kb"'
+  }).option("max-size", {
+    type: "string",
+    default: "",
+    description: 'Maximum file size to download. Example: "1mb" or "500kb"'
   }).option("skip", {
     type: "number",
     default: 0,
     description: "Skips the first N files in the download queue"
+  }).option("remove-dupilicates", {
+    type: "boolean",
+    default: true,
+    description: "removes duplicates by url and file hash"
   }).help().alias("help", "h").parseSync();
 }
 
@@ -558,7 +659,7 @@ import { Box as Box6, Spacer as Spacer2, Text as Text6 } from "ink";
 import React7 from "react";
 
 // package.json
-var version = "3.3.2";
+var version = "3.4.0";
 
 // src/cli/ui/components/titlebar.tsx
 function TitleBar() {
@@ -602,7 +703,7 @@ function App() {
   const downloader = useInkStore((state) => state.downloader);
   const filelist = downloader?.filelist;
   const isFilelist = filelist instanceof CoomerFileList;
-  return /* @__PURE__ */ React8.createElement(Box7, { borderStyle: "single", flexDirection: "column", borderColor: "blue", width: 80 }, /* @__PURE__ */ React8.createElement(TitleBar, null), !isFilelist ? /* @__PURE__ */ React8.createElement(Loading, null) : /* @__PURE__ */ React8.createElement(React8.Fragment, null, /* @__PURE__ */ React8.createElement(Box7, null, /* @__PURE__ */ React8.createElement(Box7, null, /* @__PURE__ */ React8.createElement(FileListStateBox, { filelist })), /* @__PURE__ */ React8.createElement(Box7, { flexBasis: 29 }, /* @__PURE__ */ React8.createElement(KeyboardControlsInfo, null))), filelist.getActiveFiles().map((file) => {
+  return /* @__PURE__ */ React8.createElement(Box7, { borderStyle: "single", flexDirection: "column", borderColor: "blue", width: 80 }, /* @__PURE__ */ React8.createElement(TitleBar, null), !isFilelist ? /* @__PURE__ */ React8.createElement(Loading, null) : /* @__PURE__ */ React8.createElement(React8.Fragment, null, /* @__PURE__ */ React8.createElement(Box7, null, /* @__PURE__ */ React8.createElement(Box7, null, /* @__PURE__ */ React8.createElement(FileListStateBox, { filelist })), /* @__PURE__ */ React8.createElement(Box7, { flexBasis: 30 }, /* @__PURE__ */ React8.createElement(KeyboardControlsInfo, null))), filelist.getActiveFiles().map((file) => {
     return /* @__PURE__ */ React8.createElement(FileBox, { file, key: file.name });
   })));
 }
@@ -615,7 +716,7 @@ function createReactInk() {
 // src/services/downloader.ts
 import fs2 from "node:fs";
 import { Readable, Transform } from "node:stream";
-import { pipeline } from "node:stream/promises";
+import { pipeline as pipeline2 } from "node:stream/promises";
 import { Subject } from "rxjs";
 
 // src/utils/promise.ts
@@ -650,7 +751,7 @@ var Timer = class _Timer {
     this.start();
     return this;
   }
-  static withAbortController(timeout, abortControllerSubject, message = "Timeout") {
+  static withAbortController(timeout, abortControllerSubject, message = "TIMEOUT") {
     const callback = () => {
       abortControllerSubject.next(message);
     };
@@ -661,8 +762,10 @@ var Timer = class _Timer {
 
 // src/services/downloader.ts
 var Downloader = class {
-  constructor(filelist, chunkTimeout = 3e4, chunkFetchRetries = 5, fetchRetries = 7) {
+  constructor(filelist, minSize, maxSize, chunkTimeout = 3e4, chunkFetchRetries = 5, fetchRetries = 7) {
     this.filelist = filelist;
+    this.minSize = minSize;
+    this.maxSize = maxSize;
     this.chunkTimeout = chunkTimeout;
     this.chunkFetchRetries = chunkFetchRetries;
     this.fetchRetries = fetchRetries;
@@ -680,8 +783,10 @@ var Downloader = class {
   async fetchStream(file, stream, sizeOld = 0, retries = this.chunkFetchRetries) {
     const signal = this.abortController.signal;
     const subject = this.subject;
-    const { timer } = Timer.withAbortController(this.chunkTimeout, this.abortControllerSubject);
-    let i;
+    const { timer } = Timer.withAbortController(
+      this.chunkTimeout,
+      this.abortControllerSubject
+    );
     try {
       const fileStream = fs2.createWriteStream(file.filepath, { flags: "a" });
       const progressStream = new Transform({
@@ -694,7 +799,7 @@ var Downloader = class {
         }
       });
       subject.next({ type: "CHUNK_DOWNLOADING_START" });
-      await pipeline(stream, progressStream, fileStream, { signal });
+      await pipeline2(stream, progressStream, fileStream, { signal });
     } catch (error) {
       if (signal.aborted) {
         if (signal.reason === "FILE_SKIP") return;
@@ -711,11 +816,21 @@ var Downloader = class {
     } finally {
       subject.next({ type: "CHUNK_DOWNLOADING_END" });
       timer.stop();
-      clearInterval(i);
     }
   }
   skip() {
     this.abortControllerSubject.next("FILE_SKIP");
+  }
+  filterFileSize(file) {
+    if (!file.size) return;
+    if (this.minSize && file.size < this.minSize || this.maxSize && file.size > this.maxSize) {
+      try {
+        deleteFile(file.filepath);
+      } catch {
+      }
+      this.skip();
+      return;
+    }
   }
   async downloadFile(file, retries = this.fetchRetries) {
     const signal = this.abortController.signal;
@@ -729,6 +844,7 @@ var Downloader = class {
       if (!contentLength && file.downloaded > 0) return;
       const restFileSize = parseInt(contentLength);
       file.size = restFileSize + file.downloaded;
+      this.filterFileSize(file);
       if (file.size > file.downloaded && response.body) {
         const stream = Readable.fromWeb(response.body);
         stream.setMaxListeners(20);
@@ -765,14 +881,29 @@ var Downloader = class {
 // src/index.ts
 async function run() {
   createReactInk();
-  const { url, dir, media, include, exclude, skip } = argumentHander();
+  const { url, dir, media, include, exclude, minSize, maxSize, skip, removeDupilicates } = argumentHander();
   const filelist = await apiHandler(url);
   filelist.setDirPath(dir).skip(skip).filterByText(include, exclude).filterByMediaType(media);
+  if (removeDupilicates) {
+    filelist.removeURLDuplicates();
+  }
+  const minSizeBytes = minSize ? parseSizeValue(minSize) : void 0;
+  const maxSizeBytes = maxSize ? parseSizeValue(maxSize) : void 0;
   await filelist.calculateFileSizes();
   setGlobalHeaders({ Referer: url });
-  const downloader = new Downloader(filelist);
+  const downloader = new Downloader(filelist, minSizeBytes, maxSizeBytes);
   useInkStore.getState().setDownloader(downloader);
   await downloader.downloadFiles();
-  process2.kill(process2.pid, "SIGINT");
+  if (removeDupilicates) {
+    await filelist.removeDuplicatesByHash();
+  }
 }
-run();
+(async () => {
+  try {
+    await run();
+    process2.exit(0);
+  } catch (err) {
+    console.error("Fatal error:", err);
+    process2.exit(1);
+  }
+})();

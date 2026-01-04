@@ -48,9 +48,17 @@ npx coomer-downloader --u https://random.com/file.mp4
 --media <video|image>
 --skip <number>
 
-# include/exclude filters files by name
+# Removes duplicates by url and file hash
+--remove-dupilicates <true|false>
+
+# Filter by file name
 --include <keyword1>
 --exclude <keyword2>
+
+# Filter by min/max file size. Example: "1mb" or "500kb"
+--min-size <keyword>
+--max-size <keyword>
+
 ```
 
 ```

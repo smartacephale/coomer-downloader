@@ -1,16 +1,7 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
-type ArgumentHandlerResult = {
-  url: string;
-  dir: string;
-  media?: string;
-  include: string;
-  exclude: string;
-  skip: number;
-};
-
-export function argumentHander(): ArgumentHandlerResult {
+export function argumentHander() {
   return yargs(hideBin(process.argv))
     .option('url', {
       alias: 'u',
@@ -40,10 +31,25 @@ export function argumentHander(): ArgumentHandlerResult {
       default: '',
       description: 'Filter file names by a comma-separated list of keywords to exclude',
     })
+    .option('min-size', {
+      type: 'string',
+      default: '',
+      description: 'Minimum file size to download. Example: "1mb" or "500kb"',
+    })
+    .option('max-size', {
+      type: 'string',
+      default: '',
+      description: 'Maximum file size to download. Example: "1mb" or "500kb"',
+    })
     .option('skip', {
       type: 'number',
       default: 0,
       description: 'Skips the first N files in the download queue',
+    })
+    .option('remove-dupilicates', {
+      type: 'boolean',
+      default: true,
+      description: 'removes duplicates by url and file hash',
     })
     .help()
     .alias('help', 'h')

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.2.6/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.3.10/schema.json",
   "assist": {
     "actions": {
       "source": {
@@ -14,7 +14,7 @@
     "indentStyle": "space",
     "indentWidth": 2,
     "lineEnding": "lf",
-    "lineWidth": 100
+    "lineWidth": 90
   },
   "javascript": {
     "formatter": {
@@ -38,7 +38,8 @@
         "useNumberNamespace": "off"
       },
       "suspicious": {
-        "noRedundantUseStrict": "off"
+        "noRedundantUseStrict": "off",
+        "noControlCharactersInRegex": "info"
       }
     }
   }

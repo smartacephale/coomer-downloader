@@ -1,4 +1,5 @@
 import type { Subject } from 'rxjs';
+import type { AbortControllerSubject } from '../types';
 
 export class Timer {
   private timer: NodeJS.Timeout | undefined;
@@ -34,8 +35,8 @@ export class Timer {
 
   static withAbortController(
     timeout: number,
-    abortControllerSubject: Subject<string>,
-    message: string = 'Timeout',
+    abortControllerSubject: Subject<AbortControllerSubject>,
+    message: AbortControllerSubject = 'TIMEOUT',
   ) {
     const callback = () => {
       abortControllerSubject.next(message);

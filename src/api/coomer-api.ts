@@ -34,7 +34,10 @@ async function getUserProfileData(user: CoomerAPIUser): Promise<CoomerAPIUserDat
   return result as CoomerAPIUserData;
 }
 
-async function getUserPostsAPI(user: CoomerAPIUser, offset: number): Promise<CoomerAPIPost[]> {
+async function getUserPostsAPI(
+  user: CoomerAPIUser,
+  offset: number,
+): Promise<CoomerAPIPost[]> {
   const url = `${user.domain}/api/v1/${user.service}/user/${user.id}/posts?o=${offset}`;
   const posts = await fetchWithGlobalHeader(url).then((r) => r.json());
   return posts as CoomerAPIPost[];
@@ -63,7 +66,7 @@ export async function getUserFiles(user: CoomerAPIUser): Promise<CoomerFileList>
       .map((f, i) => {
         const ext = f.name.split('.').pop();
         const name = `${datentitle} ${i + 1}.${ext}`;
-        const url = `${user.domain}/${f.path}`;
+        const url = getUrl(f, user);
         return CoomerFile.from({ name, url, content });
       });
 
@@ -71,6 +74,19 @@ export async function getUserFiles(user: CoomerAPIUser): Promise<CoomerFileList>
   }
 
   return filelist;
+}
+
+function getUrl(f: CoomerAPIFile, user: CoomerAPIUser) {
+  // Normalize f.path to avoid protocol-relative or multiple-leading-slash paths
+  const normalizedPath = f.path.replace(/^\/+/, '/');
+  let url = '';
+  try {
+    url = new URL(normalizedPath, user.domain).toString();
+  } catch (_) {
+    // Fallback: join with a single slash
+    url = `${user.domain}/${normalizedPath.replace(/^\//, '')}`;
+  }
+  return url;
 }
 
 async function parseUser(url: string): Promise<CoomerAPIUser> {

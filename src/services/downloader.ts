@@ -3,8 +3,8 @@ import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { Subject } from 'rxjs';
 import { tryFixCoomerUrl } from '../api/coomer-api';
-import type { DownloaderSubject } from '../types';
-import { getFileSize, mkdir } from '../utils/io';
+import type { AbortControllerSubject, DownloaderSubject } from '../types';
+import { deleteFile, getFileSize, mkdir } from '../utils/io';
 import { sleep } from '../utils/promise';
 import { fetchByteRange } from '../utils/requests';
 import { Timer } from '../utils/timer';
@@ -14,7 +14,7 @@ export class Downloader {
   public subject = new Subject<DownloaderSubject>();
 
   private abortController = new AbortController();
-  public abortControllerSubject = new Subject<string>();
+  public abortControllerSubject = new Subject<AbortControllerSubject>();
 
   setAbortControllerListener() {
     this.abortControllerSubject.subscribe((type) => {
@@ -25,6 +25,8 @@ export class Downloader {
 
   constructor(
     public filelist: CoomerFileList,
+    public minSize?: number,
+    public maxSize?: number,
     public chunkTimeout = 30_000,
     public chunkFetchRetries = 5,
     public fetchRetries = 7,
@@ -40,7 +42,10 @@ export class Downloader {
   ): Promise<void> {
     const signal = this.abortController.signal;
     const subject = this.subject;
-    const { timer } = Timer.withAbortController(this.chunkTimeout, this.abortControllerSubject);
+    const { timer } = Timer.withAbortController(
+      this.chunkTimeout,
+      this.abortControllerSubject,
+    );
 
     try {
       const fileStream = fs.createWriteStream(file.filepath as string, { flags: 'a' });
@@ -80,6 +85,20 @@ export class Downloader {
     this.abortControllerSubject.next('FILE_SKIP');
   }
 
+  private filterFileSize(file: CoomerFile) {
+    if (!file.size) return;
+    if (
+      (this.minSize && file.size < this.minSize) ||
+      (this.maxSize && file.size > this.maxSize)
+    ) {
+      try {
+        deleteFile(file.filepath);
+      } catch {}
+      this.skip();
+      return;
+    }
+  }
+
   async downloadFile(file: CoomerFile, retries = this.fetchRetries): Promise<void> {
     const signal = this.abortController.signal;
     try {
@@ -97,6 +116,8 @@ export class Downloader {
 
       const restFileSize = parseInt(contentLength);
       file.size = restFileSize + file.downloaded;
+
+      this.filterFileSize(file);
 
       if (file.size > file.downloaded && response.body) {
         const stream = Readable.fromWeb(response.body);
@@ -122,6 +143,7 @@ export class Downloader {
     mkdir(this.filelist.dirPath as string);
 
     this.subject.next({ type: 'FILES_DOWNLOADING_START' });
+
     for (const file of this.filelist.files) {
       file.active = true;
 

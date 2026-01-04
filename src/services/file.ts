@@ -1,13 +1,15 @@
 import os from 'node:os';
 import path from 'node:path';
+import logger from '../logger';
 import type { MediaType } from '../types';
-import { collectDuplicatesBy, findDuplicatedFiles } from '../utils/duplicates';
+import { collectUniquesAndDuplicatesBy, removeDuplicatesBy } from '../utils/duplicates';
 import { filterString } from '../utils/filters';
-import { getFileSize } from '../utils/io';
+import { deleteFile, getFileHash, getFileSize, sanitizeFilename } from '../utils/io';
 import { testMediaType } from '../utils/mediatypes';
 
 export class CoomerFile {
   public active = false;
+  public hash?: string;
 
   constructor(
     public name: string,
@@ -49,7 +51,8 @@ export class CoomerFileList {
     }
 
     this.files.forEach((file) => {
-      file.filepath = path.join(this.dirPath as string, file.name);
+      const safeName = sanitizeFilename(file.name) || file.name;
+      file.filepath = path.join(this.dirPath as string, safeName);
     });
 
     return this;
@@ -87,10 +90,24 @@ export class CoomerFileList {
     return this.files.filter((f) => f.size && f.size <= f.downloaded);
   }
 
-  public async findDuplicates() {
-    // console.log(collectDuplicatesBy(this.files, 'url'));
-    // return await findDuplicatedFiles(this.files);
-    // slice(1).forEach remove
-    return collectDuplicatesBy(this.files, 'url');
+  public async removeDuplicatesByHash() {
+    for (const file of this.files) {
+      file.hash = await getFileHash(file.filepath);
+    }
+
+    const { duplicates } = collectUniquesAndDuplicatesBy(this.files, 'hash');
+
+    console.log({ duplicates });
+
+    logger.debug(`duplicates: ${JSON.stringify(duplicates)}`);
+
+    duplicates.forEach((f) => {
+      deleteFile(f.filepath);
+    });
+  }
+
+  public removeURLDuplicates() {
+    this.files = removeDuplicatesBy(this.files, 'url');
+    return this;
   }
 }
