@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import { fetch } from 'undici';
-import { CoomerFile, CoomerFileList } from '../services/file';
+import { CoomerFile } from '../services/file';
+import { CoomerFileList } from '../services/filelist';
 
 async function getUserPage(user: string, offset: number) {
   const url = `https://nsfw.xxx/page/${offset}?nsfw[]=0&types[]=image&types[]=video&types[]=gallery&slider=1&jsload=1&user=${user}&_=${Date.now()}`;
@@ -38,7 +39,8 @@ async function getPostsData(posts: string[]): Promise<CoomerFileList> {
     if (!src) continue;
 
     const slug = post.split('post/')[1].split('?')[0];
-    const date = $('.sh-section .sh-section__passed').first().text().replace(/ /g, '-') || '';
+    const date =
+      $('.sh-section .sh-section__passed').first().text().replace(/ /g, '-') || '';
 
     const ext = src.split('.').pop();
     const name = `${slug}-${date}.${ext}`;

@@ -34,7 +34,7 @@ export function sanitizeFilename(name: string) {
 
   return name
     .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-') // Newlines (\r \n) are caught here
-    .replace(/\s+/g, ' ')                  // Turn tabs/multiple spaces into one space
+    .replace(/\s+/g, ' ') // Turn tabs/multiple spaces into one space
     .trim()
-    .replace(/[.]+$/, '');                 // Remove trailing dots
+    .replace(/[.]+$/, ''); // Remove trailing dots
 }

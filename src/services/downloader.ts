@@ -8,7 +8,8 @@ import { deleteFile, getFileSize, mkdir } from '../utils/io';
 import { sleep } from '../utils/promise';
 import { fetchByteRange } from '../utils/requests';
 import { Timer } from '../utils/timer';
-import type { CoomerFile, CoomerFileList } from './file';
+import type { CoomerFile } from './file';
+import type { CoomerFileList } from './filelist';
 
 export class Downloader {
   public subject = new Subject<DownloaderSubject>();

@@ -1,4 +1,5 @@
-import { CoomerFile, CoomerFileList } from '../services/file';
+import { CoomerFile } from '../services/file';
+import { CoomerFileList } from '../services/filelist';
 
 export async function getPlainFileData(url: string): Promise<CoomerFileList> {
   const name = url.split('/').pop() as string;

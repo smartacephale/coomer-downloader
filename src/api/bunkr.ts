@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import { fetch } from 'undici';
-import { CoomerFile, CoomerFileList } from '../services/file';
+import { CoomerFile } from '../services/file';
+import { CoomerFileList } from '../services/filelist';
 
 type EncData = { url: string; timestamp: number };
 
@@ -18,7 +19,9 @@ function decryptEncryptedUrl(encryptionData: EncData) {
   const encryptedUrlBuffer = Buffer.from(encryptionData.url, 'base64');
   const secretKeyBuffer = Buffer.from(secretKey, 'utf-8');
   return Array.from(encryptedUrlBuffer)
-    .map((byte, i) => String.fromCharCode(byte ^ secretKeyBuffer[i % secretKeyBuffer.length]))
+    .map((byte, i) =>
+      String.fromCharCode(byte ^ secretKeyBuffer[i % secretKeyBuffer.length]),
+    )
     .join('');
 }
 
