@@ -1,21 +1,31 @@
-import { useEffect, useState } from 'react';
+import { useRef, useSyncExternalStore } from 'react';
 import { useInkStore } from '../store';
 
 export const useDownloaderHook = () => {
   const downloader = useInkStore((state) => state.downloader);
-  const filelist = downloader?.filelist;
 
-  const [_, setHelper] = useState(0);
+  const versionRef = useRef(0);
 
-  useEffect(() => {
-    downloader?.subject.subscribe(({ type }) => {
-      if (
-        type === 'FILE_DOWNLOADING_START' ||
-        type === 'FILE_DOWNLOADING_END' ||
-        type === 'CHUNK_DOWNLOADING_UPDATE'
-      ) {
-        setHelper(Date.now());
-      }
-    });
-  });
+  useSyncExternalStore(
+    (onStoreChange) => {
+      if (!downloader) return () => {};
+
+      const sub = downloader.subject.subscribe(({ type }) => {
+        const targets = [
+          'FILE_DOWNLOADING_START',
+          'FILE_DOWNLOADING_END',
+          'CHUNK_DOWNLOADING_UPDATE',
+        ];
+
+        if (targets.includes(type)) {
+          versionRef.current++;
+          onStoreChange();
+        }
+      });
+      return () => sub.unsubscribe();
+    },
+    () => versionRef.current,
+  );
+
+  return downloader?.filelist;
 };
