@@ -1,7 +1,8 @@
 import { fetch } from 'undici';
-import { CoomerFile } from '../services/file';
-import { CoomerFileList } from '../services/filelist';
-import { setGlobalHeaders } from '../utils/requests';
+import { CoomerFile } from '../../core/file';
+import { CoomerFileList } from '../../core/filelist';
+import { setGlobalHeaders } from '../../utils/requests';
+import type { ProviderAPI } from '../provider';
 
 type GoFileAPIToken = { status: string; data: { token: string } };
 type GoFileAPIFilelist = { data: { children: { link: string; name: string }[] } };
@@ -14,7 +15,8 @@ async function getToken(): Promise<string> {
   if (data.status === 'ok') {
     return data.data.token;
   }
-  throw new Error('cannot get token');
+
+  throw new Error('Token Not Found');
 }
 
 async function getWebsiteToken() {
@@ -54,16 +56,22 @@ async function getFolderFiles(
   return new CoomerFileList(files);
 }
 
-export async function getGofileData(url: string): Promise<CoomerFileList> {
-  const id = url.match(/gofile.io\/d\/(\w+)/)?.[1] as string;
+export class GofileAPI implements ProviderAPI {
+  public testURL(url: URL) {
+    return /gofile\.io/.test(url.origin);
+  }
 
-  const token = await getToken();
-  const websiteToken = await getWebsiteToken();
+  public async getData(url: string): Promise<CoomerFileList> {
+    const id = url.match(/gofile.io\/d\/(\w+)/)?.[1] as string;
 
-  const filelist = await getFolderFiles(id, token, websiteToken);
-  filelist.dirName = `gofile-${id}`;
+    const token = await getToken();
+    const websiteToken = await getWebsiteToken();
 
-  setGlobalHeaders({ Cookie: `accountToken=${token}` });
+    const filelist = await getFolderFiles(id, token, websiteToken);
+    filelist.dirName = `gofile-${id}`;
 
-  return filelist;
+    setGlobalHeaders({ Cookie: `accountToken=${token}` });
+
+    return filelist;
+  }
 }

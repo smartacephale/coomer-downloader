@@ -1,7 +1,8 @@
 import { useRef, useSyncExternalStore } from 'react';
+import type { DownloaderSubject, DownloaderSubjectSignal } from '../../../types';
 import { useInkStore } from '../store';
 
-export const useDownloaderHook = () => {
+export const useDownloaderHook = (subjectEvents: DownloaderSubjectSignal[]) => {
   const downloader = useInkStore((state) => state.downloader);
 
   const versionRef = useRef(0);
@@ -10,14 +11,8 @@ export const useDownloaderHook = () => {
     (onStoreChange) => {
       if (!downloader) return () => {};
 
-      const sub = downloader.subject.subscribe(({ type }) => {
-        const targets = [
-          'FILE_DOWNLOADING_START',
-          'FILE_DOWNLOADING_END',
-          'CHUNK_DOWNLOADING_UPDATE',
-        ];
-
-        if (targets.includes(type)) {
+      const sub = downloader.subject.subscribe(({ type }: DownloaderSubject) => {
+        if (subjectEvents.includes(type)) {
           versionRef.current++;
           onStoreChange();
         }

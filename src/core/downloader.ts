@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { Subject } from 'rxjs';
-import { tryFixCoomerUrl } from '../api/coomer-api';
 import type { AbortControllerSubject, DownloaderSubject } from '../types';
 import { deleteFile, getFileSize, mkdir } from '../utils/io';
 import { sleep } from '../utils/promise';
@@ -35,7 +34,7 @@ export class Downloader {
     this.setAbortControllerListener();
   }
 
-  async fetchStream(
+  private async fetchStream(
     file: CoomerFile,
     stream: Readable,
     sizeOld = 0,
@@ -100,7 +99,10 @@ export class Downloader {
     }
   }
 
-  async downloadFile(file: CoomerFile, retries = this.fetchRetries): Promise<void> {
+  public async downloadFile(
+    file: CoomerFile,
+    retries = this.fetchRetries,
+  ): Promise<void> {
     const signal = this.abortController.signal;
     try {
       file.downloaded = await getFileSize(file.filepath as string);
@@ -130,8 +132,8 @@ export class Downloader {
         if (signal.reason === 'FILE_SKIP') return;
       }
       if (retries > 0) {
-        if (/coomer|kemono/.test(file.url)) {
-          file.url = tryFixCoomerUrl(file.url, retries);
+        if (this.filelist.provider?.fixURL) {
+          file.url = this.filelist.provider.fixURL(file.url, retries);
         }
         await sleep(1000);
         return await this.downloadFile(file, retries - 1);
@@ -140,7 +142,7 @@ export class Downloader {
     }
   }
 
-  async downloadFiles(): Promise<void> {
+  public async downloadFiles(): Promise<void> {
     mkdir(this.filelist.dirPath as string);
 
     this.subject.next({ type: 'FILES_DOWNLOADING_START' });

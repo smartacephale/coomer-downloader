@@ -1,7 +1,7 @@
 import { Box } from 'ink';
 import Image, { TerminalInfoProvider } from 'ink-picture';
 import React from 'react';
-import type { CoomerFile } from '../../../services/file';
+import type { CoomerFile } from '../../../core';
 import { isImage } from '../../../utils/mediatypes';
 import { useInkStore } from '../store';
 

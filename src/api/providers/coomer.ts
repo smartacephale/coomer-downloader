@@ -1,33 +1,26 @@
-import { CoomerFile } from '../services/file';
-import { CoomerFileList } from '../services/filelist';
-import { isImage } from '../utils/mediatypes';
-import { fetchWithGlobalHeader, setGlobalHeaders } from '../utils/requests';
+import { CoomerFile } from '../../core/file';
+import { CoomerFileList } from '../../core/filelist';
+import { isImage } from '../../utils/mediatypes';
+import { fetchWithGlobalHeader, setGlobalHeaders } from '../../utils/requests';
+import type { ProviderAPI } from '../provider';
 
-type CoomerAPIUser = { domain: string; service: string; id: string; name?: string };
-type CoomerAPIUserData = { name: string };
-type CoomerAPIFile = { path: string; name: string };
-type CoomerAPIPost = {
-  title: string;
-  content: string;
-  published: string;
-  attachments: CoomerAPIFile[];
-  file: CoomerAPIFile;
-};
-
-const SERVERS = ['n1', 'n2', 'n3', 'n4'];
-
-export function tryFixCoomerUrl(url: string, attempts: number) {
-  if (attempts < 2 && isImage(url)) {
-    return url.replace(/\/data\//, '/thumbnail/data/').replace(/n\d\./, 'img.');
-  }
-  const server = url.match(/n\d\./)?.[0].slice(0, 2) as string;
-  const i = SERVERS.indexOf(server);
-  if (i !== -1) {
-    const newServer = SERVERS[(i + 1) % SERVERS.length];
-    return url.replace(/n\d./, `${newServer}.`);
-  }
-  return url;
+interface CoomerServiceAPI {
+  user: { domain: string; service: string; id: string; name?: string };
+  userData: { name: string };
+  file: { path: string; name: string };
+  post: {
+    title: string;
+    content: string;
+    published: string;
+    attachments: CoomerServiceAPI['file'][];
+    file: CoomerServiceAPI['file'];
+  };
 }
+
+type CoomerAPIUser = CoomerServiceAPI['user'];
+type CoomerAPIUserData = CoomerServiceAPI['userData'];
+type CoomerAPIFile = CoomerServiceAPI['file'];
+type CoomerAPIPost = CoomerServiceAPI['post'];
 
 async function getUserProfileData(user: CoomerAPIUser): Promise<CoomerAPIUserData> {
   const url = `${user.domain}/api/v1/${user.service}/user/${user.id}/profile`;
@@ -101,10 +94,31 @@ async function parseUser(url: string): Promise<CoomerAPIUser> {
   return { domain, service, id, name };
 }
 
-export async function getCoomerData(url: string): Promise<CoomerFileList> {
-  setGlobalHeaders({ accept: 'text/css' });
-  const user = await parseUser(url);
-  const filelist = await getUserFiles(user);
-  filelist.dirName = `${user.name}-${user.service}`;
-  return filelist;
+export class CoomerAPI implements ProviderAPI {
+  private static readonly SERVERS = ['n1', 'n2', 'n3', 'n4'];
+
+  public fixURL(url: string, retries: number): string {
+    if (retries < 2 && isImage(url)) {
+      return url.replace(/\/data\//, '/thumbnail/data/').replace(/n\d\./, 'img.');
+    }
+    const server = url.match(/n\d\./)?.[0].slice(0, 2) as string;
+    const i = CoomerAPI.SERVERS.indexOf(server);
+    if (i !== -1) {
+      const newServer = CoomerAPI.SERVERS[(i + 1) % CoomerAPI.SERVERS.length];
+      return url.replace(/n\d./, `${newServer}.`);
+    }
+    return url;
+  }
+
+  public testURL(url: URL) {
+    return /coomer|kemono/.test(url.origin);
+  }
+
+  public async getData(url: string): Promise<CoomerFileList> {
+    setGlobalHeaders({ accept: 'text/css' });
+    const user = await parseUser(url);
+    const filelist = await getUserFiles(user);
+    filelist.dirName = `${user.name}-${user.service}`;
+    return filelist;
+  }
 }

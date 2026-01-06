@@ -1,7 +1,9 @@
 import * as cheerio from 'cheerio';
 import { fetch } from 'undici';
-import { CoomerFile } from '../services/file';
-import { CoomerFileList } from '../services/filelist';
+import { CoomerFile } from '../../core/file';
+import { CoomerFileList } from '../../core/filelist';
+import logger from '../../utils/logger';
+import type { ProviderAPI } from '../provider';
 
 async function getUserPage(user: string, offset: number) {
   const url = `https://nsfw.xxx/page/${offset}?nsfw[]=0&types[]=image&types[]=video&types[]=gallery&slider=1&jsload=1&user=${user}&_=${Date.now()}`;
@@ -20,6 +22,7 @@ async function getUserPosts(user: string): Promise<string[]> {
       .get()
       .filter((href) => href?.startsWith('https://nsfw.xxx/post'));
 
+    logger.debug({ count: posts.length });
     posts.push(...newPosts);
   }
   return posts;
@@ -45,18 +48,23 @@ async function getPostsData(posts: string[]): Promise<CoomerFileList> {
     const ext = src.split('.').pop();
     const name = `${slug}-${date}.${ext}`;
 
+    logger.debug({ hehe: filelist.files.length, src });
     filelist.files.push(CoomerFile.from({ name, url: src }));
   }
 
   return filelist;
 }
 
-export async function getRedditData(url: string): Promise<CoomerFileList> {
-  const user = url.match(/u\/(\w+)/)?.[1] as string;
-  console.log('Fetching user posts...');
-  const posts = await getUserPosts(user);
-  console.log('Fetching posts data...');
-  const filelist = await getPostsData(posts);
-  filelist.dirName = `${user}-reddit`;
-  return filelist;
+export class RedditAPI implements ProviderAPI {
+  public testURL(url: URL) {
+    return /^\/user\/[\w-]+$/.test(url.pathname);
+  }
+
+  public async getData(url: string): Promise<CoomerFileList> {
+    const user = url.match(/^\/user\/([\w-]+)/)?.[1] as string;
+    const posts = await getUserPosts(user);
+    const filelist = await getPostsData(posts);
+    filelist.dirName = `${user}-reddit`;
+    return filelist;
+  }
 }

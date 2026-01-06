@@ -1,5 +1,6 @@
 export { FileBox } from './file';
-export { FileListStateBox } from './filelist';
+export { FileListBox } from './filelist';
+export { FileListStateBox } from './filelist-state';
 export { KeyboardControlsInfo } from './keyboardinfo';
 export { Loading } from './loading';
 export { Spinner } from './spinner';

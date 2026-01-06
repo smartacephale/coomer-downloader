@@ -1,8 +1,8 @@
 import { Box } from 'ink';
 import React from 'react';
-import { CoomerFileList } from '../../services/filelist';
+import { CoomerFileList } from '../../core';
 import {
-  FileBox,
+  FileListBox,
   FileListStateBox,
   KeyboardControlsInfo,
   Loading,
@@ -13,7 +13,7 @@ import { useInputHook } from './hooks/input';
 
 export function App() {
   useInputHook();
-  const filelist = useDownloaderHook();
+  const filelist = useDownloaderHook(['FILES_DOWNLOADING_START']);
 
   return (
     <Box borderStyle="single" flexDirection="column" borderColor="blue" width={80}>
@@ -24,16 +24,14 @@ export function App() {
         <>
           <Box>
             <Box>
-              <FileListStateBox filelist={filelist} />
+              <FileListStateBox />
             </Box>
             <Box flexBasis={30}>
               <KeyboardControlsInfo />
             </Box>
           </Box>
 
-          {filelist?.getActiveFiles().map((file) => {
-            return <FileBox file={file} key={file.name} />;
-          })}
+          <FileListBox />
         </>
       )}
     </Box>

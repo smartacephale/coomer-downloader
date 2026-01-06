@@ -1,7 +1,8 @@
 import * as cheerio from 'cheerio';
 import { fetch } from 'undici';
-import { CoomerFile } from '../services/file';
-import { CoomerFileList } from '../services/filelist';
+import { CoomerFile } from '../../core/file';
+import { CoomerFileList } from '../../core/filelist';
+import type { ProviderAPI } from '../provider';
 
 type EncData = { url: string; timestamp: number };
 
@@ -64,7 +65,13 @@ async function getGalleryFiles(url: string): Promise<CoomerFileList> {
   return filelist;
 }
 
-export async function getBunkrData(url: string): Promise<CoomerFileList> {
-  const filelist = await getGalleryFiles(url);
-  return filelist;
+export class BunkrAPI implements ProviderAPI {
+  public testURL(url: URL) {
+    return /bunkr/.test(url.origin);
+  }
+
+  public async getData(url: string): Promise<CoomerFileList> {
+    const filelist = await getGalleryFiles(url);
+    return filelist;
+  }
 }

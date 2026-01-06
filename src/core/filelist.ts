@@ -1,6 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
-import logger from '../logger';
+import type { ProviderAPI } from '../api/provider';
 import type { MediaType } from '../types';
 import { collectUniquesAndDuplicatesBy, removeDuplicatesBy } from '../utils/duplicates';
 import { filterString } from '../utils/filters';
@@ -11,6 +11,7 @@ import type { CoomerFile } from './file';
 export class CoomerFileList {
   public dirPath?: string;
   public dirName?: string;
+  public provider?: ProviderAPI;
 
   constructor(public files: CoomerFile[] = []) {}
 
@@ -70,9 +71,9 @@ export class CoomerFileList {
 
     const { duplicates } = collectUniquesAndDuplicatesBy(this.files, 'hash');
 
-    console.log({ duplicates });
+    // console.log({ duplicates });
 
-    logger.debug(`duplicates: ${JSON.stringify(duplicates)}`);
+    // logger.debug(`duplicates: ${JSON.stringify(duplicates)}`);
 
     duplicates.forEach((f) => {
       deleteFile(f.filepath);

@@ -1,7 +1,8 @@
 import { Box, Spacer, Text } from 'ink';
 import React from 'react';
-import type { CoomerFile } from '../../../services/file';
+import type { CoomerFile } from '../../../core';
 import { b2mb } from '../../../utils/strings';
+import { useDownloaderHook } from '../hooks/downloader';
 import { Preview } from './preview';
 import { Spinner } from './spinner';
 
@@ -9,8 +10,11 @@ interface FileBoxProps {
   file: CoomerFile;
 }
 
-export function FileBox({ file }: FileBoxProps) {
+export const FileBox = React.memo(({ file }: FileBoxProps) => {
+  useDownloaderHook(['CHUNK_DOWNLOADING_UPDATE']);
+
   const percentage = Number((file.downloaded / (file.size as number)) * 100).toFixed(2);
+
   return (
     <>
       <Box
@@ -41,4 +45,4 @@ export function FileBox({ file }: FileBoxProps) {
       <Preview file={file} />
     </>
   );
-}
+});

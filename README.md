@@ -35,7 +35,7 @@ npx coomer-downloader --u https://gofile.io/d/<ID>
 * #### REDDIT:
 _Reddit content parsed with nsfw.xxx_
 ```
-npx coomer-downloader --u u/<username>
+npx coomer-downloader --u https://nsfw.xxx/user/<username>
 ```
 * #### Download files like curl:
 ```

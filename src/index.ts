@@ -1,11 +1,11 @@
 #!/usr/bin/env -S node --no-warnings=ExperimentalWarning
 
 import process from 'node:process';
-import { apiHandler } from './api';
+import { resolveAPI } from './api';
 import { argumentHander } from './cli/args-handler';
 import { createReactInk } from './cli/ui';
 import { useInkStore } from './cli/ui/store';
-import { Downloader } from './services/downloader';
+import { Downloader } from './core';
 import { parseSizeValue } from './utils/filters';
 import { setGlobalHeaders } from './utils/requests';
 
@@ -15,7 +15,7 @@ async function run() {
   const { url, dir, media, include, exclude, minSize, maxSize, skip, removeDupilicates } =
     argumentHander();
 
-  const filelist = await apiHandler(url);
+  const filelist = await resolveAPI(url);
 
   filelist
     .setDirPath(dir)

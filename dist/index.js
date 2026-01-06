@@ -3,27 +3,70 @@
 // src/index.ts
 import process2 from "node:process";
 
-// src/api/bunkr.ts
+// src/api/providers/bunkr.ts
 import * as cheerio from "cheerio";
 import { fetch } from "undici";
 
-// src/services/file.ts
+// src/utils/io.ts
+import { createHash } from "node:crypto";
+import fs from "node:fs";
+import { access, constants, unlink } from "node:fs/promises";
+import { pipeline } from "node:stream/promises";
+async function getFileSize(filepath) {
+  let size = 0;
+  if (fs.existsSync(filepath)) {
+    size = (await fs.promises.stat(filepath)).size || 0;
+  }
+  return size;
+}
+async function getFileHash(filepath) {
+  const hash = createHash("sha256");
+  const filestream = fs.createReadStream(filepath);
+  await pipeline(filestream, hash);
+  return hash.digest("hex");
+}
+function mkdir(filepath) {
+  if (!fs.existsSync(filepath)) {
+    fs.mkdirSync(filepath, { recursive: true });
+  }
+}
+async function deleteFile(path2) {
+  await access(path2, constants.F_OK);
+  await unlink(path2);
+}
+function sanitizeFilename(name) {
+  if (!name) return name;
+  return name.replace(/[<>:"/\\|?*\x00-\x1F]/g, "-").replace(/\s+/g, " ").trim().replace(/[.]+$/, "");
+}
+
+// src/core/file.ts
+var CoomerFile = class _CoomerFile {
+  constructor(name, url, filepath = "", size, downloaded = 0, content) {
+    this.name = name;
+    this.url = url;
+    this.filepath = filepath;
+    this.size = size;
+    this.downloaded = downloaded;
+    this.content = content;
+  }
+  active = false;
+  hash;
+  async calcDownloadedSize() {
+    this.downloaded = await getFileSize(this.filepath);
+    return this;
+  }
+  get textContent() {
+    const text = `${this.name || ""} ${this.content || ""}`.toLowerCase();
+    return text;
+  }
+  static from(f) {
+    return new _CoomerFile(f.name, f.url, f.filepath, f.size, f.downloaded, f.content);
+  }
+};
+
+// src/core/filelist.ts
 import os from "node:os";
 import path from "node:path";
-
-// src/logger/index.ts
-import pino from "pino";
-var logger = pino(
-  {
-    level: "debug"
-  },
-  pino.destination({
-    dest: "./debug.log",
-    append: false,
-    sync: true
-  })
-);
-var logger_default = logger;
 
 // src/utils/duplicates.ts
 function collectUniquesAndDuplicatesBy(xs, k) {
@@ -70,38 +113,6 @@ function parseSizeValue(s) {
   return Math.floor(val * mult);
 }
 
-// src/utils/io.ts
-import { createHash } from "node:crypto";
-import fs from "node:fs";
-import { access, constants, unlink } from "node:fs/promises";
-import { pipeline } from "node:stream/promises";
-async function getFileSize(filepath) {
-  let size = 0;
-  if (fs.existsSync(filepath)) {
-    size = (await fs.promises.stat(filepath)).size || 0;
-  }
-  return size;
-}
-async function getFileHash(filepath) {
-  const hash = createHash("sha256");
-  const filestream = fs.createReadStream(filepath);
-  await pipeline(filestream, hash);
-  return hash.digest("hex");
-}
-function mkdir(filepath) {
-  if (!fs.existsSync(filepath)) {
-    fs.mkdirSync(filepath, { recursive: true });
-  }
-}
-async function deleteFile(path2) {
-  await access(path2, constants.F_OK);
-  await unlink(path2);
-}
-function sanitizeFilename(name) {
-  if (!name) return name;
-  return name.replace(/[<>"/\\|?*\x00-\x1F]/g, "-").replace(/\s+/g, " ").trim().replace(/[.]+$/, "");
-}
-
 // src/utils/mediatypes.ts
 function isImage(name) {
   return /\.(jpg|jpeg|png|gif|bmp|tiff|webp|avif)$/i.test(name);
@@ -113,36 +124,14 @@ function testMediaType(name, type) {
   return type === "image" ? isImage(name) : isVideo(name);
 }
 
-// src/services/file.ts
-var CoomerFile = class _CoomerFile {
-  constructor(name, url, filepath = "", size, downloaded = 0, content) {
-    this.name = name;
-    this.url = url;
-    this.filepath = filepath;
-    this.size = size;
-    this.downloaded = downloaded;
-    this.content = content;
-  }
-  active = false;
-  hash;
-  async getDownloadedSize() {
-    this.downloaded = await getFileSize(this.filepath);
-    return this;
-  }
-  get textContent() {
-    const text = `${this.name || ""} ${this.content || ""}`.toLowerCase();
-    return text;
-  }
-  static from(f) {
-    return new _CoomerFile(f.name, f.url, f.filepath, f.size, f.downloaded, f.content);
-  }
-};
+// src/core/filelist.ts
 var CoomerFileList = class {
   constructor(files = []) {
     this.files = files;
   }
   dirPath;
   dirName;
+  provider;
   setDirPath(dir, dirName) {
     dirName = dirName || this.dirName;
     if (dir === "./") {
@@ -172,7 +161,7 @@ var CoomerFileList = class {
   }
   async calculateFileSizes() {
     for (const file of this.files) {
-      await file.getDownloadedSize();
+      await file.calcDownloadedSize();
     }
     return this;
   }
@@ -187,8 +176,6 @@ var CoomerFileList = class {
       file.hash = await getFileHash(file.filepath);
     }
     const { duplicates } = collectUniquesAndDuplicatesBy(this.files, "hash");
-    console.log({ duplicates });
-    logger_default.debug(`duplicates: ${JSON.stringify(duplicates)}`);
     duplicates.forEach((f) => {
       deleteFile(f.filepath);
     });
@@ -199,7 +186,7 @@ var CoomerFileList = class {
   }
 };
 
-// src/api/bunkr.ts
+// src/api/providers/bunkr.ts
 async function getEncryptionData(slug) {
   const response = await fetch("https://bunkr.cr/api/vs", {
     method: "POST",
@@ -212,7 +199,9 @@ function decryptEncryptedUrl(encryptionData) {
   const secretKey = `SECRET_KEY_${Math.floor(encryptionData.timestamp / 3600)}`;
   const encryptedUrlBuffer = Buffer.from(encryptionData.url, "base64");
   const secretKeyBuffer = Buffer.from(secretKey, "utf-8");
-  return Array.from(encryptedUrlBuffer).map((byte, i) => String.fromCharCode(byte ^ secretKeyBuffer[i % secretKeyBuffer.length])).join("");
+  return Array.from(encryptedUrlBuffer).map(
+    (byte, i) => String.fromCharCode(byte ^ secretKeyBuffer[i % secretKeyBuffer.length])
+  ).join("");
 }
 async function getFileData(url, name) {
   const slug = url.split("/").pop();
@@ -244,10 +233,15 @@ async function getGalleryFiles(url) {
   }
   return filelist;
 }
-async function getBunkrData(url) {
-  const filelist = await getGalleryFiles(url);
-  return filelist;
-}
+var BunkrAPI = class {
+  testURL(url) {
+    return /bunkr/.test(url.origin);
+  }
+  async getData(url) {
+    const filelist = await getGalleryFiles(url);
+    return filelist;
+  }
+};
 
 // src/utils/requests.ts
 import { CookieAgent } from "http-cookie-agent/undici";
@@ -278,20 +272,8 @@ function fetchByteRange(url, downloadedSize, signal) {
   return fetch2(url, { headers: requestHeaders, signal });
 }
 
-// src/api/coomer-api.ts
+// src/api/providers/coomer.ts
 var SERVERS = ["n1", "n2", "n3", "n4"];
-function tryFixCoomerUrl(url, attempts) {
-  if (attempts < 2 && isImage(url)) {
-    return url.replace(/\/data\//, "/thumbnail/data/").replace(/n\d\./, "img.");
-  }
-  const server = url.match(/n\d\./)?.[0].slice(0, 2);
-  const i = SERVERS.indexOf(server);
-  if (i !== -1) {
-    const newServer = SERVERS[(i + 1) % SERVERS.length];
-    return url.replace(/n\d./, `${newServer}.`);
-  }
-  return url;
-}
 async function getUserProfileData(user) {
   const url = `${user.domain}/api/v1/${user.service}/user/${user.id}/profile`;
   const result = await fetchWithGlobalHeader(url).then((r) => r.json());
@@ -344,15 +326,32 @@ async function parseUser(url) {
   const { name } = await getUserProfileData({ domain, service, id });
   return { domain, service, id, name };
 }
-async function getCoomerData(url) {
-  setGlobalHeaders({ accept: "text/css" });
-  const user = await parseUser(url);
-  const filelist = await getUserFiles(user);
-  filelist.dirName = `${user.name}-${user.service}`;
-  return filelist;
-}
+var CoomerAPI = class {
+  fixURL(url, retries) {
+    if (retries < 2 && isImage(url)) {
+      return url.replace(/\/data\//, "/thumbnail/data/").replace(/n\d\./, "img.");
+    }
+    const server = url.match(/n\d\./)?.[0].slice(0, 2);
+    const i = SERVERS.indexOf(server);
+    if (i !== -1) {
+      const newServer = SERVERS[(i + 1) % SERVERS.length];
+      return url.replace(/n\d./, `${newServer}.`);
+    }
+    return url;
+  }
+  testURL(url) {
+    return /coomer|kemono/.test(url.origin);
+  }
+  async getData(url) {
+    setGlobalHeaders({ accept: "text/css" });
+    const user = await parseUser(url);
+    const filelist = await getUserFiles(user);
+    filelist.dirName = `${user.name}-${user.service}`;
+    return filelist;
+  }
+};
 
-// src/api/gofile.ts
+// src/api/providers/gofile.ts
 import { fetch as fetch3 } from "undici";
 async function getToken() {
   const response = await fetch3("https://api.gofile.io/accounts", {
@@ -392,17 +391,36 @@ async function getFolderFiles(id, token, websiteToken) {
   );
   return new CoomerFileList(files);
 }
-async function getGofileData(url) {
-  const id = url.match(/gofile.io\/d\/(\w+)/)?.[1];
-  const token = await getToken();
-  const websiteToken = await getWebsiteToken();
-  const filelist = await getFolderFiles(id, token, websiteToken);
-  filelist.dirName = `gofile-${id}`;
-  setGlobalHeaders({ Cookie: `accountToken=${token}` });
-  return filelist;
-}
+var GofileAPI = class {
+  testURL(url) {
+    return /gofile\.io/.test(url.origin);
+  }
+  async getData(url) {
+    const id = url.match(/gofile.io\/d\/(\w+)/)?.[1];
+    const token = await getToken();
+    const websiteToken = await getWebsiteToken();
+    const filelist = await getFolderFiles(id, token, websiteToken);
+    filelist.dirName = `gofile-${id}`;
+    setGlobalHeaders({ Cookie: `accountToken=${token}` });
+    return filelist;
+  }
+};
 
-// src/api/nsfw.xxx.ts
+// src/api/providers/plainfile.ts
+var PlainFileAPI = class {
+  testURL(url) {
+    return /\.\w+/.test(url.pathname);
+  }
+  async getData(url) {
+    const name = url.split("/").pop();
+    const file = CoomerFile.from({ name, url });
+    const filelist = new CoomerFileList([file]);
+    filelist.dirName = "";
+    return filelist;
+  }
+};
+
+// src/api/providers/reddit.ts
 import * as cheerio2 from "cheerio";
 import { fetch as fetch4 } from "undici";
 async function getUserPage(user, offset) {
@@ -435,42 +453,30 @@ async function getPostsData(posts) {
   }
   return filelist;
 }
-async function getRedditData(url) {
-  const user = url.match(/u\/(\w+)/)?.[1];
-  console.log("Fetching user posts...");
-  const posts = await getUserPosts(user);
-  console.log("Fetching posts data...");
-  const filelist = await getPostsData(posts);
-  filelist.dirName = `${user}-reddit`;
-  return filelist;
-}
+var RedditAPI = class {
+  testURL(url) {
+    return /^u\/\w+$/.test(url.origin);
+  }
+  async getData(url) {
+    const user = url.match(/u\/(\w+)/)?.[1];
+    const posts = await getUserPosts(user);
+    const filelist = await getPostsData(posts);
+    filelist.dirName = `${user}-reddit`;
+    return filelist;
+  }
+};
 
-// src/api/plain-curl.ts
-async function getPlainFileData(url) {
-  const name = url.split("/").pop();
-  const file = CoomerFile.from({ name, url });
-  const filelist = new CoomerFileList([file]);
-  filelist.dirName = "";
-  return filelist;
-}
-
-// src/api/index.ts
-async function apiHandler(url_) {
+// src/api/resolver.ts
+var providers = [RedditAPI, CoomerAPI, BunkrAPI, GofileAPI, PlainFileAPI];
+async function resolveAPI(url_) {
   const url = new URL(url_);
-  if (/^u\/\w+$/.test(url.origin)) {
-    return getRedditData(url.href);
-  }
-  if (/coomer|kemono/.test(url.origin)) {
-    return getCoomerData(url.href);
-  }
-  if (/bunkr/.test(url.origin)) {
-    return getBunkrData(url.href);
-  }
-  if (/gofile\.io/.test(url.origin)) {
-    return getGofileData(url.href);
-  }
-  if (/\.\w+/.test(url.pathname)) {
-    return getPlainFileData(url.href);
+  for (const p of providers) {
+    const provider = new p();
+    if (provider.testURL(url)) {
+      const filelist = await provider.getData(url.toString());
+      filelist.provider = provider;
+      return filelist;
+    }
   }
   throw Error("Invalid URL");
 }
@@ -526,6 +532,171 @@ import React9 from "react";
 // src/cli/ui/app.tsx
 import { Box as Box7 } from "ink";
 import React8 from "react";
+
+// src/core/downloader.ts
+import fs2 from "node:fs";
+import { Readable, Transform } from "node:stream";
+import { pipeline as pipeline2 } from "node:stream/promises";
+import { Subject } from "rxjs";
+
+// src/utils/promise.ts
+async function sleep(time) {
+  return new Promise((resolve) => setTimeout(resolve, time));
+}
+
+// src/utils/timer.ts
+var Timer = class _Timer {
+  constructor(timeout = 1e4, timeoutCallback) {
+    this.timeout = timeout;
+    this.timeoutCallback = timeoutCallback;
+    this.timeout = timeout;
+  }
+  timer;
+  start() {
+    this.timer = setTimeout(() => {
+      this.stop();
+      this.timeoutCallback();
+    }, this.timeout);
+    return this;
+  }
+  stop() {
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = void 0;
+    }
+    return this;
+  }
+  reset() {
+    this.stop();
+    this.start();
+    return this;
+  }
+  static withAbortController(timeout, abortControllerSubject, message = "TIMEOUT") {
+    const callback = () => {
+      abortControllerSubject.next(message);
+    };
+    const timer = new _Timer(timeout, callback).start();
+    return { timer };
+  }
+};
+
+// src/core/downloader.ts
+var Downloader = class {
+  constructor(filelist, minSize, maxSize, chunkTimeout = 3e4, chunkFetchRetries = 5, fetchRetries = 7) {
+    this.filelist = filelist;
+    this.minSize = minSize;
+    this.maxSize = maxSize;
+    this.chunkTimeout = chunkTimeout;
+    this.chunkFetchRetries = chunkFetchRetries;
+    this.fetchRetries = fetchRetries;
+    this.setAbortControllerListener();
+  }
+  subject = new Subject();
+  abortController = new AbortController();
+  abortControllerSubject = new Subject();
+  setAbortControllerListener() {
+    this.abortControllerSubject.subscribe((type) => {
+      this.abortController.abort(type);
+      this.abortController = new AbortController();
+    });
+  }
+  async fetchStream(file, stream, sizeOld = 0, retries = this.chunkFetchRetries) {
+    const signal = this.abortController.signal;
+    const subject = this.subject;
+    const { timer } = Timer.withAbortController(
+      this.chunkTimeout,
+      this.abortControllerSubject
+    );
+    try {
+      const fileStream = fs2.createWriteStream(file.filepath, { flags: "a" });
+      const progressStream = new Transform({
+        transform(chunk, _encoding, callback) {
+          this.push(chunk);
+          file.downloaded += chunk.length;
+          timer.reset();
+          subject.next({ type: "CHUNK_DOWNLOADING_UPDATE" });
+          callback();
+        }
+      });
+      subject.next({ type: "CHUNK_DOWNLOADING_START" });
+      await pipeline2(stream, progressStream, fileStream, { signal });
+    } catch (error) {
+      if (signal.aborted) {
+        if (signal.reason === "FILE_SKIP") return;
+        if (signal.reason === "TIMEOUT") {
+          if (retries === 0 && sizeOld < file.downloaded) {
+            retries += this.chunkFetchRetries;
+            sizeOld = file.downloaded;
+          }
+          if (retries === 0) return;
+          return await this.fetchStream(file, stream, sizeOld, retries - 1);
+        }
+      }
+      throw error;
+    } finally {
+      subject.next({ type: "CHUNK_DOWNLOADING_END" });
+      timer.stop();
+    }
+  }
+  skip() {
+    this.abortControllerSubject.next("FILE_SKIP");
+  }
+  filterFileSize(file) {
+    if (!file.size) return;
+    if (this.minSize && file.size < this.minSize || this.maxSize && file.size > this.maxSize) {
+      try {
+        deleteFile(file.filepath);
+      } catch {
+      }
+      this.skip();
+      return;
+    }
+  }
+  async downloadFile(file, retries = this.fetchRetries) {
+    const signal = this.abortController.signal;
+    try {
+      file.downloaded = await getFileSize(file.filepath);
+      const response = await fetchByteRange(file.url, file.downloaded, signal);
+      if (!response?.ok && response?.status !== 416) {
+        throw new Error(`HTTP error! status: ${response?.status}`);
+      }
+      const contentLength = response.headers.get("Content-Length");
+      if (!contentLength && file.downloaded > 0) return;
+      const restFileSize = parseInt(contentLength);
+      file.size = restFileSize + file.downloaded;
+      this.filterFileSize(file);
+      if (file.size > file.downloaded && response.body) {
+        const stream = Readable.fromWeb(response.body);
+        stream.setMaxListeners(20);
+        await this.fetchStream(file, stream, file.downloaded);
+      }
+    } catch (error) {
+      if (signal.aborted) {
+        if (signal.reason === "FILE_SKIP") return;
+      }
+      if (retries > 0) {
+        if (this.filelist.provider?.fixURL) {
+          file.url = this.filelist.provider.fixURL(file.url, retries);
+        }
+        await sleep(1e3);
+        return await this.downloadFile(file, retries - 1);
+      }
+      throw error;
+    }
+  }
+  async downloadFiles() {
+    mkdir(this.filelist.dirPath);
+    this.subject.next({ type: "FILES_DOWNLOADING_START" });
+    for (const file of this.filelist.files) {
+      file.active = true;
+      this.subject.next({ type: "FILE_DOWNLOADING_START" });
+      await this.downloadFile(file);
+      file.active = false;
+      this.subject.next({ type: "FILE_DOWNLOADING_END" });
+    }
+    this.subject.next({ type: "FILES_DOWNLOADING_END" });
+  }
+};
 
 // src/cli/ui/components/file.tsx
 import { Box as Box2, Spacer, Text as Text2 } from "ink";
@@ -659,7 +830,7 @@ import { Box as Box6, Spacer as Spacer2, Text as Text6 } from "ink";
 import React7 from "react";
 
 // package.json
-var version = "3.4.0";
+var version = "3.4.1";
 
 // src/cli/ui/components/titlebar.tsx
 function TitleBar() {
@@ -667,18 +838,30 @@ function TitleBar() {
 }
 
 // src/cli/ui/hooks/downloader.ts
-import { useEffect as useEffect2, useState as useState2 } from "react";
+import { useRef, useSyncExternalStore } from "react";
 var useDownloaderHook = () => {
   const downloader = useInkStore((state) => state.downloader);
-  const filelist = downloader?.filelist;
-  const [_, setHelper] = useState2(0);
-  useEffect2(() => {
-    downloader?.subject.subscribe(({ type }) => {
-      if (type === "FILE_DOWNLOADING_START" || type === "FILE_DOWNLOADING_END" || type === "CHUNK_DOWNLOADING_UPDATE") {
-        setHelper(Date.now());
-      }
-    });
-  });
+  const versionRef = useRef(0);
+  useSyncExternalStore(
+    (onStoreChange) => {
+      if (!downloader) return () => {
+      };
+      const sub = downloader.subject.subscribe(({ type }) => {
+        const targets = [
+          "FILE_DOWNLOADING_START",
+          "FILE_DOWNLOADING_END",
+          "CHUNK_DOWNLOADING_UPDATE"
+        ];
+        if (targets.includes(type)) {
+          versionRef.current++;
+          onStoreChange();
+        }
+      });
+      return () => sub.unsubscribe();
+    },
+    () => versionRef.current
+  );
+  return downloader?.filelist;
 };
 
 // src/cli/ui/hooks/input.ts
@@ -699,11 +882,8 @@ var useInputHook = () => {
 // src/cli/ui/app.tsx
 function App() {
   useInputHook();
-  useDownloaderHook();
-  const downloader = useInkStore((state) => state.downloader);
-  const filelist = downloader?.filelist;
-  const isFilelist = filelist instanceof CoomerFileList;
-  return /* @__PURE__ */ React8.createElement(Box7, { borderStyle: "single", flexDirection: "column", borderColor: "blue", width: 80 }, /* @__PURE__ */ React8.createElement(TitleBar, null), !isFilelist ? /* @__PURE__ */ React8.createElement(Loading, null) : /* @__PURE__ */ React8.createElement(React8.Fragment, null, /* @__PURE__ */ React8.createElement(Box7, null, /* @__PURE__ */ React8.createElement(Box7, null, /* @__PURE__ */ React8.createElement(FileListStateBox, { filelist })), /* @__PURE__ */ React8.createElement(Box7, { flexBasis: 30 }, /* @__PURE__ */ React8.createElement(KeyboardControlsInfo, null))), filelist.getActiveFiles().map((file) => {
+  const filelist = useDownloaderHook();
+  return /* @__PURE__ */ React8.createElement(Box7, { borderStyle: "single", flexDirection: "column", borderColor: "blue", width: 80 }, /* @__PURE__ */ React8.createElement(TitleBar, null), !(filelist instanceof CoomerFileList) ? /* @__PURE__ */ React8.createElement(Loading, null) : /* @__PURE__ */ React8.createElement(React8.Fragment, null, /* @__PURE__ */ React8.createElement(Box7, null, /* @__PURE__ */ React8.createElement(Box7, null, /* @__PURE__ */ React8.createElement(FileListStateBox, { filelist })), /* @__PURE__ */ React8.createElement(Box7, { flexBasis: 30 }, /* @__PURE__ */ React8.createElement(KeyboardControlsInfo, null))), filelist?.getActiveFiles().map((file) => {
     return /* @__PURE__ */ React8.createElement(FileBox, { file, key: file.name });
   })));
 }
@@ -713,176 +893,11 @@ function createReactInk() {
   return render(/* @__PURE__ */ React9.createElement(App, null));
 }
 
-// src/services/downloader.ts
-import fs2 from "node:fs";
-import { Readable, Transform } from "node:stream";
-import { pipeline as pipeline2 } from "node:stream/promises";
-import { Subject } from "rxjs";
-
-// src/utils/promise.ts
-async function sleep(time) {
-  return new Promise((resolve) => setTimeout(resolve, time));
-}
-
-// src/utils/timer.ts
-var Timer = class _Timer {
-  constructor(timeout = 1e4, timeoutCallback) {
-    this.timeout = timeout;
-    this.timeoutCallback = timeoutCallback;
-    this.timeout = timeout;
-  }
-  timer;
-  start() {
-    this.timer = setTimeout(() => {
-      this.stop();
-      this.timeoutCallback();
-    }, this.timeout);
-    return this;
-  }
-  stop() {
-    if (this.timer) {
-      clearTimeout(this.timer);
-      this.timer = void 0;
-    }
-    return this;
-  }
-  reset() {
-    this.stop();
-    this.start();
-    return this;
-  }
-  static withAbortController(timeout, abortControllerSubject, message = "TIMEOUT") {
-    const callback = () => {
-      abortControllerSubject.next(message);
-    };
-    const timer = new _Timer(timeout, callback).start();
-    return { timer };
-  }
-};
-
-// src/services/downloader.ts
-var Downloader = class {
-  constructor(filelist, minSize, maxSize, chunkTimeout = 3e4, chunkFetchRetries = 5, fetchRetries = 7) {
-    this.filelist = filelist;
-    this.minSize = minSize;
-    this.maxSize = maxSize;
-    this.chunkTimeout = chunkTimeout;
-    this.chunkFetchRetries = chunkFetchRetries;
-    this.fetchRetries = fetchRetries;
-    this.setAbortControllerListener();
-  }
-  subject = new Subject();
-  abortController = new AbortController();
-  abortControllerSubject = new Subject();
-  setAbortControllerListener() {
-    this.abortControllerSubject.subscribe((type) => {
-      this.abortController.abort(type);
-      this.abortController = new AbortController();
-    });
-  }
-  async fetchStream(file, stream, sizeOld = 0, retries = this.chunkFetchRetries) {
-    const signal = this.abortController.signal;
-    const subject = this.subject;
-    const { timer } = Timer.withAbortController(
-      this.chunkTimeout,
-      this.abortControllerSubject
-    );
-    try {
-      const fileStream = fs2.createWriteStream(file.filepath, { flags: "a" });
-      const progressStream = new Transform({
-        transform(chunk, _encoding, callback) {
-          this.push(chunk);
-          file.downloaded += chunk.length;
-          timer.reset();
-          subject.next({ type: "CHUNK_DOWNLOADING_UPDATE" });
-          callback();
-        }
-      });
-      subject.next({ type: "CHUNK_DOWNLOADING_START" });
-      await pipeline2(stream, progressStream, fileStream, { signal });
-    } catch (error) {
-      if (signal.aborted) {
-        if (signal.reason === "FILE_SKIP") return;
-        if (signal.reason === "TIMEOUT") {
-          if (retries === 0 && sizeOld < file.downloaded) {
-            retries += this.chunkFetchRetries;
-            sizeOld = file.downloaded;
-          }
-          if (retries === 0) return;
-          return await this.fetchStream(file, stream, sizeOld, retries - 1);
-        }
-      }
-      throw error;
-    } finally {
-      subject.next({ type: "CHUNK_DOWNLOADING_END" });
-      timer.stop();
-    }
-  }
-  skip() {
-    this.abortControllerSubject.next("FILE_SKIP");
-  }
-  filterFileSize(file) {
-    if (!file.size) return;
-    if (this.minSize && file.size < this.minSize || this.maxSize && file.size > this.maxSize) {
-      try {
-        deleteFile(file.filepath);
-      } catch {
-      }
-      this.skip();
-      return;
-    }
-  }
-  async downloadFile(file, retries = this.fetchRetries) {
-    const signal = this.abortController.signal;
-    try {
-      file.downloaded = await getFileSize(file.filepath);
-      const response = await fetchByteRange(file.url, file.downloaded, signal);
-      if (!response?.ok && response?.status !== 416) {
-        throw new Error(`HTTP error! status: ${response?.status}`);
-      }
-      const contentLength = response.headers.get("Content-Length");
-      if (!contentLength && file.downloaded > 0) return;
-      const restFileSize = parseInt(contentLength);
-      file.size = restFileSize + file.downloaded;
-      this.filterFileSize(file);
-      if (file.size > file.downloaded && response.body) {
-        const stream = Readable.fromWeb(response.body);
-        stream.setMaxListeners(20);
-        await this.fetchStream(file, stream, file.downloaded);
-      }
-    } catch (error) {
-      if (signal.aborted) {
-        if (signal.reason === "FILE_SKIP") return;
-      }
-      if (retries > 0) {
-        if (/coomer|kemono/.test(file.url)) {
-          file.url = tryFixCoomerUrl(file.url, retries);
-        }
-        await sleep(1e3);
-        return await this.downloadFile(file, retries - 1);
-      }
-      throw error;
-    }
-  }
-  async downloadFiles() {
-    mkdir(this.filelist.dirPath);
-    this.subject.next({ type: "FILES_DOWNLOADING_START" });
-    for (const file of this.filelist.files) {
-      file.active = true;
-      this.subject.next({ type: "FILE_DOWNLOADING_START" });
-      await this.downloadFile(file);
-      file.active = false;
-      this.subject.next({ type: "FILE_DOWNLOADING_END" });
-    }
-    this.subject.next({ type: "FILES_DOWNLOADING_END" });
-  }
-};
-
 // src/index.ts
 async function run() {
   createReactInk();
   const { url, dir, media, include, exclude, minSize, maxSize, skip, removeDupilicates } = argumentHander();
-  const filelist = await apiHandler(url);
+  const filelist = await resolveAPI(url);
   filelist.setDirPath(dir).skip(skip).filterByText(include, exclude).filterByMediaType(media);
   if (removeDupilicates) {
     filelist.removeURLDuplicates();
