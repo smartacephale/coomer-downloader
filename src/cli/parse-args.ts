@@ -1,7 +1,7 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
-export function argumentHander() {
+export function parseArgs() {
   return yargs(hideBin(process.argv))
     .option('url', {
       alias: 'u',

@@ -3,6 +3,7 @@ import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { Subject } from 'rxjs';
 import type { AbortControllerSubject, DownloaderSubject } from '../types';
+import { printError } from '../utils/error';
 import { deleteFile, getFileSize, mkdir } from '../utils/io';
 import { sleep } from '../utils/promise';
 import { fetchByteRange } from '../utils/requests';
@@ -152,7 +153,11 @@ export class Downloader {
 
       this.subject.next({ type: 'FILE_DOWNLOADING_START' });
 
-      await this.downloadFile(file);
+      try {
+        await this.downloadFile(file);
+      } catch (e) {
+        printError(e, { quiet: [403], context: file.url });
+      }
 
       file.active = false;
 
