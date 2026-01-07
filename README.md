@@ -10,40 +10,40 @@
 * Preview images in console. For now partial downloads not supported.
 
 ### Install:
-```
+```haskell
 npm install -g coomer-downloader
 ```
 ### Update:
-```
+```haskell
  npm update -g coomer-downloader
 ```
 
 ### How to use:
 
 * #### COOMER/KEMONO: 
-```
+```haskell
 npx coomer-downloader --u https://coomer.st/onlyfans/user/<username>
 ```
 * #### BUNKR: 
-```
+```haskell
 npx coomer-downloader --u https://bunkr.sk/a/<ID>
 ```
 * #### GoFile: 
-```
+```haskell
 npx coomer-downloader --u https://gofile.io/d/<ID>
 ```
 * #### REDDIT:
 _Reddit content parsed with nsfw.xxx_
-```
+```haskell
 npx coomer-downloader --u https://nsfw.xxx/user/<username>
 ```
 * #### Download files like curl:
-```
+```haskell
 npx coomer-downloader --u https://random.com/file.mp4
 ```
 
 ### Options:
-```
+```haskell
 --dir <directory>
 --media <video|image>
 --skip <number>
@@ -61,7 +61,7 @@ npx coomer-downloader --u https://random.com/file.mp4
 
 ```
 
-```
+```haskell
 ⠀⠀⠀⠀⠀⠀⠀⠀⢀⠀⠄⠐⠠⠐⠠⢂⢂⢂⢺⢽⢯⢿⢽⢽⢽⢵⡣⠂⠄⡐⠠⠐⠠⠐⠠⠐⡀⡂⡐⢐
 ⠀⠄⠀⠀⠀⠀⠀⠀⠄⢀⠂⠡⠈⠌⡨⢐⢐⢐⢭⣻⣽⣻⡽⣯⢯⣗⢇⢑⠨⠐⡈⠌⡨⠈⢌⢐⠐⠄⢌⢐
 ⠐⡀⠀⠀⠀⠀⠀⠐⠀⢂⠐⡈⠌⡐⡐⠔⡐⣕⣞⣾⣳⣯⢿⡝⡝⡌⢄⠄⠌⠂⢌⢂⢂⠅⢅⠢⠡⡑⡐⡐
