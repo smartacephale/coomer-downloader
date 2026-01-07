@@ -11,6 +11,7 @@ async function getToken(): Promise<string> {
   const response = await fetch('https://api.gofile.io/accounts', {
     method: 'POST',
   });
+
   const data = (await response.json()) as GoFileAPIToken;
   if (data.status === 'ok') {
     return data.data.token;
@@ -20,13 +21,12 @@ async function getToken(): Promise<string> {
 }
 
 async function getWebsiteToken() {
-  const response = await fetch('https://gofile.io/dist/js/global.js');
-  const alljs = await response.text();
-  const match = alljs.match(/appdata\.wt = "([^"]+)"/);
-  if (match?.[1]) {
-    return match[1];
-  }
-  throw new Error('cannot get wt');
+  const config = await fetch('https://gofile.io/dist/js/config.js').then((r) => r.text());
+
+  const wt = config.match(/appdata\.wt = "([^"]+)"/)?.[1];
+  if (wt) return wt;
+
+  throw new Error('Token Not Found');
 }
 
 async function getFolderFiles(
@@ -38,6 +38,8 @@ async function getFolderFiles(
   const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${token}`,
+      referrer: 'https://gofile.io',
+      'x-website-token': websiteToken,
     },
   });
 
@@ -67,10 +69,10 @@ export class GofileAPI implements ProviderAPI {
     const token = await getToken();
     const websiteToken = await getWebsiteToken();
 
+    setGlobalHeaders({ Cookie: `accountToken=${token}` });
+
     const filelist = await getFolderFiles(id, token, websiteToken);
     filelist.dirName = `gofile-${id}`;
-
-    setGlobalHeaders({ Cookie: `accountToken=${token}` });
 
     return filelist;
   }

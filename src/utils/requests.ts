@@ -29,7 +29,11 @@ export function fetchWithGlobalHeader(url: string) {
   return fetch(url, { headers: requestHeaders });
 }
 
-export function fetchByteRange(url: string, downloadedSize: number, signal?: AbortSignal) {
+export function fetchByteRange(
+  url: string,
+  downloadedSize: number,
+  signal?: AbortSignal,
+) {
   const requestHeaders = new Headers(HeadersDefault);
   requestHeaders.set('Range', `bytes=${downloadedSize}-`);
   return fetch(url, { headers: requestHeaders, signal });
