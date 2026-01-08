@@ -6,13 +6,7 @@ import { CoomerFileList } from '../../core/filelist';
 import type { ProviderAPI } from '../provider';
 
 type EncData = { url: string; timestamp: number };
-type AlbumFiles = {
-  name: string;
-  original: string;
-  slug: string;
-  timestamp: string;
-  thumbnail: string;
-};
+type AlbumFiles = { slug: string };
 
 async function getEncryptionData(slug: string): Promise<EncData> {
   const response = await fetch('https://bunkr.cr/api/vs', {
