@@ -24,6 +24,10 @@ export async function main() {
     filelist.removeURLDuplicates();
   }
 
+  if (filelist.files.length === 0) {
+    throw Error('Found No Files');
+  }
+
   const minSizeBytes = minSize ? parseSizeValue(minSize) : undefined;
   const maxSizeBytes = maxSize ? parseSizeValue(maxSize) : undefined;
 

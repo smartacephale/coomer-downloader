@@ -1,3 +1,4 @@
+import vm from 'node:vm';
 import * as cheerio from 'cheerio';
 import { fetch } from 'undici';
 import { CoomerFile } from '../../core/file';
@@ -5,6 +6,13 @@ import { CoomerFileList } from '../../core/filelist';
 import type { ProviderAPI } from '../provider';
 
 type EncData = { url: string; timestamp: number };
+type AlbumFiles = {
+  name: string;
+  original: string;
+  slug: string;
+  timestamp: string;
+  thumbnail: string;
+};
 
 async function getEncryptionData(slug: string): Promise<EncData> {
   const response = await fetch('https://bunkr.cr/api/vs', {
@@ -26,10 +34,15 @@ function decryptEncryptedUrl(encryptionData: EncData) {
     .join('');
 }
 
-async function getFileData(url: string, name: string): Promise<CoomerFile> {
+async function getGalleryFile(url: string): Promise<CoomerFile> {
+  const page = await fetch(url).then((r) => r.text());
+  const $ = cheerio.load(page);
+  const name = $('h1').text();
   const slug = url.split('/').pop() as string;
+
   const encryptionData = await getEncryptionData(slug);
   const src = decryptEncryptedUrl(encryptionData);
+
   return CoomerFile.from({ name, url: src });
 }
 
@@ -37,29 +50,53 @@ async function getGalleryFiles(url: string): Promise<CoomerFileList> {
   const filelist = new CoomerFileList();
   const page = await fetch(url).then((r) => r.text());
   const $ = cheerio.load(page);
-  const dirName = $('title').text();
-  filelist.dirName = `${dirName.split('|')[0].trim()}-bunkr`;
-  const url_ = new URL(url);
+  const { pathname, origin } = new URL(url);
 
-  if (url_.pathname.startsWith('/f/')) {
-    const fileName = $('h1').text();
-    const singleFile = await getFileData(url, fileName);
-    filelist.files.push(singleFile);
-    return filelist;
+  const title = $('title').text();
+  filelist.dirName = `${title.split('|')[0].trim()}-bunkr`;
+
+  const galleryFilePages: string[] = [];
+
+  if (pathname.startsWith('/f/')) {
+    galleryFilePages.push(url);
+  } else {
+    let targetScript: string | undefined;
+
+    $('script').each((_, el) => {
+      const content = $(el).html();
+      if (content?.includes('window.albumFiles =')) {
+        targetScript = content;
+        return false;
+      }
+    });
+
+    const albumFiles: AlbumFiles[] = [];
+
+    if (targetScript) {
+      const context = vm.createContext({ window: {} });
+      const x = new vm.Script(targetScript);
+      x.runInContext(context);
+
+      if (context.window.albumFiles) {
+        albumFiles.push(...context.window.albumFiles);
+      }
+    }
+
+    if (albumFiles.length > 0) {
+      const _url = new URL(origin);
+
+      const links = albumFiles.map((f) => {
+        _url.pathname = `/f/${f.slug}`;
+        return _url.toString();
+      });
+
+      galleryFilePages.push(...links);
+    }
   }
 
-  const fileNames = Array.from($('div[title]').map((_, e) => $(e).attr('title')));
-
-  const data = Array.from($('a').map((_, e) => $(e).attr('href')))
-    .filter((a) => /\/f\/\w+/.test(a))
-    .map((a, i) => ({
-      url: `${url_.origin}${a}`,
-      name: fileNames[i] || (url.split('/').pop() as string),
-    }));
-
-  for (const { name, url } of data) {
-    const res = await getFileData(url, name);
-    filelist.files.push(res);
+  for (const link of galleryFilePages) {
+    const file = await getGalleryFile(link);
+    filelist.files.push(file);
   }
 
   return filelist;
@@ -71,7 +108,9 @@ export class BunkrAPI implements ProviderAPI {
   }
 
   public async getData(url: string): Promise<CoomerFileList> {
-    const filelist = await getGalleryFiles(url);
+    const _url = new URL(url);
+    _url.searchParams.set('advanced', '1');
+    const filelist = await getGalleryFiles(_url.toString());
     return filelist;
   }
 }
