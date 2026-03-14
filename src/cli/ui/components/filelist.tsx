@@ -1,14 +1,14 @@
 import React from 'react';
-import type { CoomerFile } from '../../../core';
-import { useDownloaderHook } from '../hooks/downloader';
-import { FileBox } from './file';
+import type { CoomerFile } from '../../../core/index.ts';
+import { useDownloaderHook } from '../hooks/downloader.ts';
+import { FileBox } from './file.tsx';
 
 export function FileListBox() {
-  const filelist = useDownloaderHook(['FILE_DOWNLOADING_START', 'FILE_DOWNLOADING_END']);
+  const filelist = useDownloaderHook(['FILE_STARTED', 'FILE_FINISHED']);
 
   return (
     <>
-      {filelist?.getActiveFiles().map((file: CoomerFile) => {
+      {filelist?.active.map((file: CoomerFile) => {
         return <FileBox file={file} key={file.name} />;
       })}
     </>

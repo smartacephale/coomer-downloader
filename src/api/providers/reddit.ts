@@ -1,7 +1,6 @@
 import { fetch } from 'undici';
-import { CoomerFile } from '../../core';
-import { CoomerFileList } from '../../core/filelist';
-import type { ProviderAPI } from '../provider';
+import { CoomerFile, CoomerFileList } from '../../core/index.ts';
+import type { ProviderAPI } from '../provider.ts';
 
 type RedditAPIPosts = {
   data: {

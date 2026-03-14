@@ -1,9 +1,9 @@
-import type { CoomerFileList } from '../core/filelist';
-import { BunkrAPI } from './providers/bunkr';
-import { CoomerAPI } from './providers/coomer';
-import { GofileAPI } from './providers/gofile';
-import { PlainFileAPI } from './providers/plainfile';
-import { RedditAPI } from './providers/reddit';
+import type { CoomerFileList } from '../core/index.ts';
+import { BunkrAPI } from './providers/bunkr.ts';
+import { CoomerAPI } from './providers/coomer.ts';
+import { GofileAPI } from './providers/gofile.ts';
+import { PlainFileAPI } from './providers/plainfile.ts';
+import { RedditAPI } from './providers/reddit.ts';
 
 const providers = [RedditAPI, CoomerAPI, BunkrAPI, GofileAPI, PlainFileAPI];
 

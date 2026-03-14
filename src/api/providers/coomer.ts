@@ -1,8 +1,7 @@
-import { CoomerFile } from '../../core/file';
-import { CoomerFileList } from '../../core/filelist';
-import { isImage } from '../../utils/mediatypes';
-import { fetchWithGlobalHeader, setGlobalHeaders } from '../../utils/requests';
-import type { ProviderAPI } from '../provider';
+import { CoomerFile, CoomerFileList } from '../../core/index.ts';
+import { isImage } from '../../utils/mediatypes.ts';
+import { fetchWithGlobalHeader, setGlobalHeaders } from '../../utils/requests.ts';
+import type { ProviderAPI } from '../provider.ts';
 
 interface CoomerServiceAPI {
   user: { domain: string; service: string; id: string; name?: string };

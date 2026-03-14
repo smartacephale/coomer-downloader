@@ -1,6 +1,6 @@
 {
   "name": "coomer-downloader",
-  "version": "3.4.5",
+  "version": "3.5.0",
   "author": "smartacephal",
   "license": "MIT",
   "description": "Downloads images/videos from Coomer/Kemono, Bunkr, GoFile, Reddit-NSFW user posts",
@@ -28,7 +28,8 @@
     "start": "tsx ./src/index.ts",
     "start-watch": "tsx watch ./src/index.ts",
     "build": "node build.js",
-    "start-build": "npm run build && node ./dist/index.js"
+    "build:start": "npm run build && node ./dist/index.js",
+    "build:deno": "deno compile -A --output ./build/coomer-downloader src/index.ts --compress"
   },
   "bin": {
     "coomer-downloader": "./dist/index.js"
@@ -38,11 +39,13 @@
     "email": "atm.mormon@protonmail.com"
   },
   "dependencies": {
+    "@violent-orangutan/ink-picture": "^1.3.6",
+    "bytes": "3.1.2",
     "cheerio": "1.1.0",
     "cli-spinners": "^3.3.0",
     "http-cookie-agent": "^6.0.0",
     "ink": "^6.5.1",
-    "ink-picture": "^1.3.3",
+    "ix": "^7.0.0",
     "react": "^19.2.0",
     "rxjs": "^7.8.2",
     "tough-cookie": "5.1.2",
@@ -51,6 +54,7 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@types/bytes": "^3.1.5",
     "@types/node": "^24.10.0",
     "@types/react": "^19.2.6",
     "@types/yargs": "^17.0.34",

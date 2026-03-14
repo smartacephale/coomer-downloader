@@ -24,5 +24,6 @@ Thumbs.db
 .npmrc
 package-lock.json
 
-TODO
+TODO*
 dist/
+build/

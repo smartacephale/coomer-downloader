@@ -1,10 +1,10 @@
 import { Box, Text } from 'ink';
 import React from 'react';
-import { Spinner } from './spinner';
+import { Spinner } from './spinner.tsx';
 
 export function Loading() {
   return (
-    <Box paddingX={1} borderDimColor flexDirection="column">
+    <Box padding={1} borderDimColor flexDirection="column">
       <Box alignSelf="center">
         <Text dimColor color={'redBright'}>
           Fetching Data

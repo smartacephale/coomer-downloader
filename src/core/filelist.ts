@@ -1,12 +1,21 @@
 import os from 'node:os';
 import path from 'node:path';
-import type { ProviderAPI } from '../api/provider';
-import type { MediaType } from '../types';
-import { collectUniquesAndDuplicatesBy, removeDuplicatesBy } from '../utils/duplicates';
-import { filterString } from '../utils/filters';
-import { deleteFile, getFileHash, sanitizeFilename } from '../utils/io';
-import { testMediaType } from '../utils/mediatypes';
-import type { CoomerFile } from './file';
+import type { ProviderAPI } from '../api/provider.ts';
+import type { MediaType } from '../types/index.ts';
+import {
+  collectUniquesAndDuplicatesBy,
+  removeDuplicatesBy,
+} from '../utils/duplicates.ts';
+import {
+  deleteFile,
+  getFileHash,
+  readFileData,
+  sanitizeFilename,
+  saveFileData,
+} from '../utils/io.ts';
+import { testMediaType } from '../utils/mediatypes.ts';
+import { filterString } from '../utils/strings.ts';
+import type { CoomerFile } from './file.ts';
 
 export class CoomerFileList {
   public dirPath?: string;
@@ -32,6 +41,39 @@ export class CoomerFileList {
     return this;
   }
 
+  public get stateFilePath() {
+    return path.resolve(this.dirPath as string, '.coomer.json');
+  }
+
+  public async saveState() {
+    const state = this.finished.map((f) => ({
+      finished: f.finished,
+      url: f.url,
+      name: f.name,
+    }));
+
+    const str = JSON.stringify(state);
+    await saveFileData(this.stateFilePath, str);
+
+    return this;
+  }
+
+  public async readState() {
+    const savedStateStr = await readFileData(this.stateFilePath);
+    if (!savedStateStr) return this;
+
+    const savedState = JSON.parse(savedStateStr as string) as CoomerFile[];
+
+    this.files.forEach((f) => {
+      const savedFileState = savedState.find((s) => s.url === f.url);
+      if (savedFileState) {
+        Object.assign(f, savedFileState);
+      }
+    });
+
+    return this;
+  }
+
   public filterByText(include: string, exclude: string) {
     this.files = this.files.filter((f) => filterString(f.textContent, include, exclude));
     return this;
@@ -49,38 +91,38 @@ export class CoomerFileList {
     return this;
   }
 
-  public async calculateFileSizes() {
-    for (const file of this.files) {
-      await file.calcDownloadedSize();
-    }
-    return this;
-  }
-
-  public getActiveFiles() {
+  public get active() {
     return this.files.filter((f) => f.active);
   }
 
-  public getDownloaded() {
-    return this.files.filter((f) => f.size && f.size <= f.downloaded);
+  public get finished() {
+    return this.files.filter((f) => f.finished);
   }
 
-  public async removeDuplicatesByHash() {
+  public get downloadedCount() {
+    return this.finished.length;
+  }
+
+  public async removeDuplicatesByHash(should: boolean) {
+    if (!should) return this;
+
+    this.files = this.files.filter((f) => f.finished || f.downloaded > 0);
+
     for (const file of this.files) {
       file.hash = await getFileHash(file.filepath);
     }
 
     const { duplicates } = collectUniquesAndDuplicatesBy(this.files, 'hash');
 
-    // console.log({ duplicates });
+    for (const f of duplicates) {
+      await deleteFile(f.filepath);
+    }
 
-    // logger.debug(`duplicates: ${JSON.stringify(duplicates)}`);
-
-    duplicates.forEach((f) => {
-      deleteFile(f.filepath);
-    });
+    return this;
   }
 
-  public removeURLDuplicates() {
+  public removeUrlDuplicates(should: boolean) {
+    if (!should) return this;
     this.files = removeDuplicatesBy(this.files, 'url');
     return this;
   }

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Downloader } from '../../../core';
+import type { Downloader } from '../../../core/index.ts';
 
 interface InkState {
   preview: boolean;

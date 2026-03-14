@@ -1,27 +1,33 @@
 import fs from 'node:fs';
-import { Readable, Transform } from 'node:stream';
+import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { type AsyncIterableX, defer, from, throwError } from 'ix/asynciterable';
+import { catchError, finalize, tap, timeout } from 'ix/asynciterable/operators';
 import { Subject } from 'rxjs';
-import type { AbortControllerSubject, DownloaderSubject } from '../types';
-import { printError } from '../utils/error';
-import { deleteFile, getFileSize, mkdir } from '../utils/io';
-import { sleep } from '../utils/promise';
-import { fetchByteRange } from '../utils/requests';
-import { Timer } from '../utils/timer';
-import type { CoomerFile } from './file';
-import type { CoomerFileList } from './filelist';
+import type { Response } from 'undici';
+import type { AbortControllerEvent, DownloaderEvent } from '../types/index.ts';
+import { printError } from '../utils/error.ts';
+import { deleteFile, getFileSize, makeDir } from '../utils/io.ts';
+import { wait } from '../utils/promise.ts';
+import { fetchByteRange } from '../utils/requests.ts';
+import type { CoomerFile } from './file.ts';
+import type { CoomerFileList } from './filelist.ts';
 
 export class Downloader {
-  public subject = new Subject<DownloaderSubject>();
+  public subject$ = new Subject<DownloaderEvent>();
 
   private abortController = new AbortController();
-  public abortControllerSubject = new Subject<AbortControllerSubject>();
+  public AbortControllerEvent$ = new Subject<AbortControllerEvent>();
 
   setAbortControllerListener() {
-    this.abortControllerSubject.subscribe((type) => {
+    this.AbortControllerEvent$.subscribe((type) => {
       this.abortController.abort(type);
       this.abortController = new AbortController();
     });
+  }
+
+  public skip() {
+    this.AbortControllerEvent$.next('FILE_SKIP');
   }
 
   constructor(
@@ -35,69 +41,74 @@ export class Downloader {
     this.setAbortControllerListener();
   }
 
-  private async fetchStream(
-    file: CoomerFile,
-    stream: Readable,
-    sizeOld = 0,
-    retries = this.chunkFetchRetries,
-  ): Promise<void> {
-    const signal = this.abortController.signal;
-    const subject = this.subject;
-    const { timer } = Timer.withAbortController(
-      this.chunkTimeout,
-      this.abortControllerSubject,
+  private async fetchStream(file: CoomerFile, stream: Readable): Promise<void> {
+    const { signal } = this.abortController;
+
+    let sizeOld = file.downloaded;
+    let retriesLeft = this.chunkFetchRetries;
+
+    const download$: AsyncIterableX<Buffer> = defer(() => from(stream)).pipe(
+      tap((chunk: Buffer) => {
+        file.downloaded += chunk.length;
+        this.subject$.next({ type: 'CHUNK_UPDATED' });
+      }),
+      timeout(this.chunkTimeout),
+      catchError((err: Error): AsyncIterableX<Buffer> => {
+        if (signal.aborted && signal.reason === 'FILE_SKIP') {
+          return from([]);
+        }
+
+        if (file.downloaded > sizeOld) {
+          sizeOld = file.downloaded;
+          retriesLeft = this.chunkFetchRetries;
+        }
+
+        if (retriesLeft > 0) {
+          retriesLeft--;
+          return download$;
+        }
+
+        return throwError(() => err);
+      }),
+      finalize(() => this.subject$.next({ type: 'CHUNK_FINISHED' })),
     );
 
     try {
       const fileStream = fs.createWriteStream(file.filepath as string, { flags: 'a' });
-
-      const progressStream = new Transform({
-        transform(chunk, _encoding, callback) {
-          this.push(chunk);
-          file.downloaded += chunk.length;
-          timer.reset();
-          subject.next({ type: 'CHUNK_DOWNLOADING_UPDATE' });
-          callback();
-        },
-      });
-
-      subject.next({ type: 'CHUNK_DOWNLOADING_START' });
-      await pipeline(stream, progressStream, fileStream, { signal });
-    } catch (error) {
-      if (signal.aborted) {
-        if (signal.reason === 'FILE_SKIP') return;
-        if (signal.reason === 'TIMEOUT') {
-          if (retries === 0 && sizeOld < file.downloaded) {
-            retries += this.chunkFetchRetries;
-            sizeOld = file.downloaded;
-          }
-          if (retries === 0) return;
-          return await this.fetchStream(file, stream, sizeOld, retries - 1);
-        }
-      }
-      throw error;
-    } finally {
-      subject.next({ type: 'CHUNK_DOWNLOADING_END' });
-      timer.stop();
+      this.subject$.next({ type: 'CHUNK_STARTED' });
+      await pipeline(download$, fileStream, { signal });
+    } catch (err) {
+      if (signal.aborted && signal.reason === 'FILE_SKIP') return;
+      throw err;
     }
   }
 
-  public skip() {
-    this.abortControllerSubject.next('FILE_SKIP');
-  }
-
-  private filterFileSize(file: CoomerFile) {
+  private async filterFileSize(file: CoomerFile) {
     if (!file.size) return;
     if (
       (this.minSize && file.size < this.minSize) ||
       (this.maxSize && file.size > this.maxSize)
     ) {
-      try {
-        deleteFile(file.filepath);
-      } catch {}
+      await deleteFile(file.filepath);
       this.skip();
       return;
     }
+  }
+
+  private parseFileSize(response: Response, downloadedSize: number) {
+    let size = 0;
+    const contentRange = response.headers.get('Content-Range');
+    const contentLength = response.headers.get('Content-Length');
+
+    if (contentRange) {
+      const totalSize = parseInt(contentRange.split('/').pop() as string);
+      size = totalSize;
+    } else if (contentLength) {
+      const restFileSize = parseInt(contentLength);
+      size = restFileSize + downloadedSize;
+    }
+
+    return size;
   }
 
   public async downloadFile(
@@ -114,20 +125,19 @@ export class Downloader {
         throw new Error(`HTTP error! status: ${response?.status}`);
       }
 
-      const contentLength = response.headers.get('Content-Length') as string;
+      file.size = this.parseFileSize(response, file.downloaded);
 
-      if (!contentLength && file.downloaded > 0) return;
+      if (!file.size && file.downloaded > 0) return;
 
-      const restFileSize = parseInt(contentLength);
-      file.size = restFileSize + file.downloaded;
-
-      this.filterFileSize(file);
+      await this.filterFileSize(file);
 
       if (file.size > file.downloaded && response.body) {
         const stream = Readable.fromWeb(response.body);
         stream.setMaxListeners(20);
-        await this.fetchStream(file, stream, file.downloaded);
+        await this.fetchStream(file, stream);
       }
+
+      file.finished = file.downloaded >= file.size;
     } catch (error) {
       if (signal.aborted) {
         if (signal.reason === 'FILE_SKIP') return;
@@ -136,7 +146,7 @@ export class Downloader {
         if (this.filelist.provider?.fixURL) {
           file.url = this.filelist.provider.fixURL(file.url, retries);
         }
-        await sleep(1000);
+        await wait(1000);
         return await this.downloadFile(file, retries - 1);
       }
       throw error;
@@ -144,14 +154,18 @@ export class Downloader {
   }
 
   public async downloadFiles(): Promise<void> {
-    mkdir(this.filelist.dirPath as string);
+    makeDir(this.filelist.dirPath as string);
 
-    this.subject.next({ type: 'FILES_DOWNLOADING_START' });
+    this.subject$.next({ type: 'DOWNLOAD_STARTED' });
 
     for (const file of this.filelist.files) {
+      if (file.finished) {
+        continue;
+      }
+
       file.active = true;
 
-      this.subject.next({ type: 'FILE_DOWNLOADING_START' });
+      this.subject$.next({ type: 'FILE_STARTED' });
 
       try {
         await this.downloadFile(file);
@@ -161,9 +175,11 @@ export class Downloader {
 
       file.active = false;
 
-      this.subject.next({ type: 'FILE_DOWNLOADING_END' });
+      await this.filelist.saveState();
+
+      this.subject$.next({ type: 'FILE_FINISHED' });
     }
 
-    this.subject.next({ type: 'FILES_DOWNLOADING_END' });
+    this.subject$.next({ type: 'DOWNLOAD_FINISHED' });
   }
 }

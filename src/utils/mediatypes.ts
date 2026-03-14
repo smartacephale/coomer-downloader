@@ -1,4 +1,4 @@
-import type { MediaType } from '../types';
+import type { MediaType } from '../types/index.ts';
 
 export function isImage(name: string) {
   return /\.(jpg|jpeg|png|gif|bmp|tiff|webp|avif)$/i.test(name);

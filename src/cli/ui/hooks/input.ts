@@ -1,5 +1,5 @@
 import { useInput } from 'ink';
-import { useInkStore } from '../store';
+import { useInkStore } from '../store/index.ts';
 
 export const useInputHook = () => {
   const downloader = useInkStore((state) => state.downloader);

@@ -1,14 +1,31 @@
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
-import { access, constants, unlink } from 'node:fs/promises';
+import { mkdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
 
-export async function getFileSize(filepath: string) {
-  let size = 0;
-  if (fs.existsSync(filepath)) {
-    size = (await fs.promises.stat(filepath)).size || 0;
+export async function readFileData(filePath: string) {
+  try {
+    const data = await readFile(filePath, 'utf8');
+    return data;
+  } catch (e) {
+    console.error(e);
   }
-  return size;
+}
+
+export async function saveFileData(filePath: string, content: string) {
+  try {
+    await writeFile(filePath, content, 'utf8');
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+export async function getFileSize(filepath: string): Promise<number> {
+  try {
+    return (await stat(filepath)).size;
+  } catch (_) {
+    return 0;
+  }
 }
 
 export async function getFileHash(filepath: string) {
@@ -18,15 +35,20 @@ export async function getFileHash(filepath: string) {
   return hash.digest('hex');
 }
 
-export function mkdir(filepath: string) {
-  if (!fs.existsSync(filepath)) {
-    fs.mkdirSync(filepath, { recursive: true });
+export async function makeDir(filepath: string): Promise<void> {
+  try {
+    await mkdir(filepath, { recursive: true });
+  } catch (e) {
+    console.error(e);
   }
 }
 
 export async function deleteFile(path: string) {
-  await access(path, constants.F_OK);
-  await unlink(path);
+  try {
+    await unlink(path);
+  } catch (e) {
+    console.error(e);
+  }
 }
 
 export function sanitizeFilename(name: string) {

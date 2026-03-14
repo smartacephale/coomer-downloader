@@ -1,9 +1,9 @@
 import { Box, Text } from 'ink';
 import React from 'react';
-import { useDownloaderHook } from '../hooks/downloader';
+import { useDownloaderHook } from '../hooks/downloader.ts';
 
 export function FileListStateBox() {
-  const filelist = useDownloaderHook(['FILE_DOWNLOADING_START', 'FILE_DOWNLOADING_END']);
+  const filelist = useDownloaderHook(['FILE_STARTED', 'FILE_FINISHED']);
 
   return (
     <Box
@@ -29,7 +29,9 @@ export function FileListStateBox() {
             Downloaded:
           </Text>
         </Box>
-        <Text color="blue" dimColor wrap="wrap"></Text>
+        <Text color="blue" dimColor wrap="wrap">
+          {filelist?.downloadedCount}
+        </Text>
       </Box>
       <Box>
         <Box width={9}>

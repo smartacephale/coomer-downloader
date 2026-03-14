@@ -1,6 +1,5 @@
-import { CoomerFile } from '../../core/file';
-import { CoomerFileList } from '../../core/filelist';
-import type { ProviderAPI } from '../provider';
+import { CoomerFile, CoomerFileList } from '../../core/index.ts';
+import type { ProviderAPI } from '../provider.ts';
 
 export class PlainFileAPI implements ProviderAPI {
   public testURL(url: URL) {

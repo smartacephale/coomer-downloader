@@ -1,9 +1,9 @@
+import { Buffer } from 'node:buffer';
 import vm from 'node:vm';
 import * as cheerio from 'cheerio';
 import { fetch } from 'undici';
-import { CoomerFile } from '../../core/file';
-import { CoomerFileList } from '../../core/filelist';
-import type { ProviderAPI } from '../provider';
+import { CoomerFile, CoomerFileList } from '../../core/index.ts';
+import type { ProviderAPI } from '../provider.ts';
 
 type EncData = { url: string; timestamp: number };
 type AlbumFiles = { slug: string };

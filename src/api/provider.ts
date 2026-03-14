@@ -1,4 +1,4 @@
-import type { CoomerFileList } from '../core/filelist';
+import type { CoomerFileList } from '../core/index.ts';
 
 export interface ProviderAPI {
   fixURL?(url: string, retries: number): string;

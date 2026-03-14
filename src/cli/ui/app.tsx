@@ -1,22 +1,28 @@
 import { Box } from 'ink';
 import React from 'react';
-import { CoomerFileList } from '../../core';
+import { CoomerFileList } from '../../core/filelist.ts';
 import {
   FileListBox,
   FileListStateBox,
   KeyboardControlsInfo,
   Loading,
   TitleBar,
-} from './components';
-import { useDownloaderHook } from './hooks/downloader';
-import { useInputHook } from './hooks/input';
+} from './components/index.ts';
+import { useDownloaderHook } from './hooks/downloader.ts';
+import { useInputHook } from './hooks/input.ts';
 
 export function App() {
   useInputHook();
-  const filelist = useDownloaderHook(['FILES_DOWNLOADING_START']);
+  const filelist = useDownloaderHook(['DOWNLOAD_STARTED']);
 
   return (
-    <Box borderStyle="single" flexDirection="column" borderColor="blue" width={80}>
+    <Box
+      borderStyle="single"
+      flexDirection="column"
+      borderColor="blue"
+      backgroundColor={'black'}
+      width={80}
+    >
       <TitleBar />
       {!(filelist instanceof CoomerFileList) ? (
         <Loading />
@@ -30,7 +36,6 @@ export function App() {
               <KeyboardControlsInfo />
             </Box>
           </Box>
-
           <FileListBox />
         </>
       )}

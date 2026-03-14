@@ -1,7 +1,7 @@
 #!/usr/bin/env -S node --no-warnings=ExperimentalWarning
 
 import process from 'node:process';
-import { main } from './main';
+import { main } from './main.ts';
 
 main()
   .then(() => process.exit(0))

@@ -1,8 +1,7 @@
 import { fetch } from 'undici';
-import { CoomerFile } from '../../core/file';
-import { CoomerFileList } from '../../core/filelist';
-import { setGlobalHeaders } from '../../utils/requests';
-import type { ProviderAPI } from '../provider';
+import { CoomerFile, CoomerFileList } from '../../core/index.ts';
+import { setGlobalHeaders } from '../../utils/requests.ts';
+import type { ProviderAPI } from '../provider.ts';
 
 type GoFileAPIToken = { status: string; data: { token: string } };
 type GoFileAPIFilelist = { data: { children: { link: string; name: string }[] } };

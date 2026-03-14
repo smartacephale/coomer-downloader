@@ -1,10 +1,10 @@
-import { resolveAPI } from './api';
-import { parseArgs } from './cli/parse-args';
-import { createReactInk } from './cli/ui';
-import { useInkStore } from './cli/ui/store';
-import { Downloader } from './core';
-import { parseSizeValue } from './utils/filters';
-import { setGlobalHeaders } from './utils/requests';
+import bytes from 'bytes';
+import { resolveAPI } from './api/index.ts';
+import { parseArgs } from './cli/parse-args.ts';
+import { createReactInk } from './cli/ui/index.tsx';
+import { useInkStore } from './cli/ui/store/index.ts';
+import { type CoomerFileList, Downloader } from './core/index.ts';
+import { setGlobalHeaders } from './utils/requests.ts';
 
 export async function main() {
   createReactInk();
@@ -12,26 +12,22 @@ export async function main() {
   const { url, dir, media, include, exclude, minSize, maxSize, skip, removeDupilicates } =
     parseArgs();
 
-  const filelist = await resolveAPI(url);
+  const filelist: CoomerFileList = await resolveAPI(url);
 
-  filelist
+  await filelist
     .setDirPath(dir)
     .skip(skip)
     .filterByText(include, exclude)
-    .filterByMediaType(media);
-
-  if (removeDupilicates) {
-    filelist.removeURLDuplicates();
-  }
+    .filterByMediaType(media)
+    .removeUrlDuplicates(removeDupilicates)
+    .readState();
 
   if (filelist.files.length === 0) {
     throw Error('Found No Files');
   }
 
-  const minSizeBytes = minSize ? parseSizeValue(minSize) : undefined;
-  const maxSizeBytes = maxSize ? parseSizeValue(maxSize) : undefined;
-
-  await filelist.calculateFileSizes();
+  const minSizeBytes = minSize ? (bytes(minSize) as number) : undefined;
+  const maxSizeBytes = maxSize ? (bytes(maxSize) as number) : undefined;
 
   setGlobalHeaders({ Referer: url });
 
@@ -40,7 +36,5 @@ export async function main() {
 
   await downloader.downloadFiles();
 
-  if (removeDupilicates) {
-    await filelist.removeDuplicatesByHash();
-  }
+  await filelist.removeDuplicatesByHash(removeDupilicates);
 }

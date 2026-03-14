@@ -18,18 +18,19 @@ export function parseArgs() {
     .option('media', {
       type: 'string',
       choices: ['video', 'image'],
-      description:
-        "The type of media to download: 'video', 'image', or 'all'. 'all' is the default.",
+      description: 'Filter files by media type',
     })
     .option('include', {
       type: 'string',
       default: '',
-      description: 'Filter file names by a comma-separated list of keywords to include',
+      description:
+        'Positive filter by file title, takes comma-separated list of keywords or RegExp',
     })
     .option('exclude', {
       type: 'string',
       default: '',
-      description: 'Filter file names by a comma-separated list of keywords to exclude',
+      description:
+        'Negative filter by file title, takes comma-separated list of keywords or RegExp',
     })
     .option('min-size', {
       type: 'string',

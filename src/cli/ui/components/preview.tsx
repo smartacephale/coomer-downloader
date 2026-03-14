@@ -1,29 +1,26 @@
+import Image, { TerminalInfoProvider } from '@violent-orangutan/ink-picture';
 import { Box } from 'ink';
-import Image, { TerminalInfoProvider } from 'ink-picture';
 import React from 'react';
-import type { CoomerFile } from '../../../core';
-import { isImage } from '../../../utils/mediatypes';
-import { useInkStore } from '../store';
+import type { CoomerFile } from '../../../core/index.ts';
+import { isImage } from '../../../utils/mediatypes.ts';
+import { useDownloaderHook } from '../hooks/downloader.ts';
+import { useInkStore } from '../store/index.ts';
 
 interface PreviewProps {
   file: CoomerFile;
 }
 
 export function Preview({ file }: PreviewProps) {
+  useDownloaderHook(['CHUNK_UPDATED']);
   const previewEnabled = useInkStore((state) => state.preview);
-  const bigEnough = file.downloaded > 50 * 1024;
-  const shouldShow = previewEnabled && bigEnough && isImage(file.filepath as string);
-  const imgInfo = `
-    can't read partial images yet...
-    actual size: ${file.size}}
-    downloaded: ${file.downloaded}}
-  `;
+  const shouldShow = previewEnabled && isImage(file.filepath as string);
+
   return (
     shouldShow && (
-      <Box paddingX={1}>
+      <Box key={`box-${file.downloaded}`} width={30} height={15}>
         <TerminalInfoProvider>
-          <Box width={30} height={15}>
-            <Image src={file.filepath as string} alt={imgInfo} />
+          <Box width={30} height={15} padding={1}>
+            <Image protocol={'halfBlock'} src={file.filepath as string} alt={file.name} />
           </Box>
         </TerminalInfoProvider>
       </Box>

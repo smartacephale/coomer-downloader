@@ -1,7 +1,6 @@
-import { getFileSize } from '../utils/io';
-
 export class CoomerFile {
   public active = false;
+  public finished = false;
   public hash?: string;
 
   constructor(
@@ -13,14 +12,8 @@ export class CoomerFile {
     public content?: string,
   ) {}
 
-  public async calcDownloadedSize() {
-    this.downloaded = await getFileSize(this.filepath as string);
-    return this;
-  }
-
   public get textContent() {
-    const text = `${this.name || ''} ${this.content || ''}`.toLowerCase();
-    return text;
+    return `${this.name || ''} ${this.content || ''}`.toLowerCase();
   }
 
   public static from(f: Pick<CoomerFile, 'name' | 'url'> & Partial<CoomerFile>) {
