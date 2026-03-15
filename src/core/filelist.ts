@@ -1,4 +1,3 @@
-import os from 'node:os';
 import path from 'node:path';
 import type { ProviderAPI } from '../api/provider.ts';
 import type { MediaType } from '../types/index.ts';
@@ -10,6 +9,7 @@ import {
   deleteFile,
   getFileHash,
   readFileData,
+  resolvePath,
   sanitizeFilename,
   saveFileData,
 } from '../utils/io.ts';
@@ -27,11 +27,7 @@ export class CoomerFileList {
   public setDirPath(dir: string, dirName?: string) {
     dirName = dirName || (this.dirName as string);
 
-    if (dir === './') {
-      this.dirPath = path.resolve(dir, dirName);
-    } else {
-      this.dirPath = path.join(os.homedir(), path.join(dir, dirName));
-    }
+    this.dirPath = resolvePath(dir, dirName);
 
     this.files.forEach((file) => {
       const safeName = sanitizeFilename(file.name) || file.name;
@@ -121,7 +117,7 @@ export class CoomerFileList {
     return this;
   }
 
-  public removeUrlDuplicates(should: boolean) {
+  public removeDuplicatesByUrl(should: boolean) {
     if (!should) return this;
     this.files = removeDuplicatesBy(this.files, 'url');
     return this;

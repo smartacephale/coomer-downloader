@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import { mkdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 
 export async function readFileData(filePath: string) {
@@ -51,12 +53,25 @@ export async function deleteFile(path: string) {
   }
 }
 
+export function resolvePath(dir: string, dirName: string) {
+  let normalizedDir = dir;
+
+  if (dir.startsWith('~')) {
+    normalizedDir = path.join(os.homedir(), dir.slice(1));
+  } else if (path.isAbsolute(dir)) {
+    const { root } = path.parse(dir);
+    normalizedDir = path.join(os.homedir(), dir.substring(root.length));
+  }
+
+  return path.resolve(normalizedDir, dirName);
+}
+
 export function sanitizeFilename(name: string) {
   if (!name) return name;
 
   return name
     .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-') // Newlines (\r \n) are caught here
-    .replace(/\s+/g, ' ') // Turn tabs/multiple spaces into one space
+    .replace(/\s+/g, ' ')
     .trim()
-    .replace(/[.]+$/, ''); // Remove trailing dots
+    .replace(/[.]+$/, '');
 }

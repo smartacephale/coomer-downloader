@@ -13,7 +13,7 @@ export class CoomerFile {
   ) {}
 
   public get textContent() {
-    return `${this.name || ''} ${this.content || ''}`.toLowerCase();
+    return `${this.name || ''} ${this.content || ''}`;
   }
 
   public static from(f: Pick<CoomerFile, 'name' | 'url'> & Partial<CoomerFile>) {

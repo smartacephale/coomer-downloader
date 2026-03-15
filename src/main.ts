@@ -19,7 +19,7 @@ export async function main() {
     .skip(skip)
     .filterByText(include, exclude)
     .filterByMediaType(media)
-    .removeUrlDuplicates(removeDupilicates)
+    .removeDuplicatesByUrl(removeDupilicates)
     .readState();
 
   if (filelist.files.length === 0) {
