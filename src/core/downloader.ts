@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { type AsyncIterableX, defer, from, throwError } from 'ix/asynciterable';
+import { type AsyncIterableX, from, throwError } from 'ix/asynciterable';
 import { catchError, finalize, tap, timeout } from 'ix/asynciterable/operators';
 import { Subject } from 'rxjs';
 import type { Response } from 'undici';
@@ -43,24 +43,23 @@ export class Downloader {
 
   private async fetchStream(file: CoomerFile, stream: Readable): Promise<void> {
     const { signal } = this.abortController;
+    const { chunkFetchRetries, chunkTimeout, subject$ } = this;
 
     let sizeOld = file.downloaded;
-    let retriesLeft = this.chunkFetchRetries;
+    let retriesLeft = chunkFetchRetries;
 
-    const download$: AsyncIterableX<Buffer> = defer(() => from(stream)).pipe(
+    const download$: AsyncIterableX<Buffer> = from(stream).pipe(
+      timeout(chunkTimeout),
       tap((chunk: Buffer) => {
         file.downloaded += chunk.length;
-        this.subject$.next({ type: 'CHUNK_UPDATED' });
+        subject$.next({ type: 'CHUNK_UPDATED' });
       }),
-      timeout(this.chunkTimeout),
       catchError((err: Error): AsyncIterableX<Buffer> => {
-        if (signal.aborted && signal.reason === 'FILE_SKIP') {
-          return from([]);
-        }
+        if (signal.aborted && signal.reason === 'FILE_SKIP') return from([]);
 
         if (file.downloaded > sizeOld) {
           sizeOld = file.downloaded;
-          retriesLeft = this.chunkFetchRetries;
+          retriesLeft = chunkFetchRetries;
         }
 
         if (retriesLeft > 0) {
@@ -70,12 +69,12 @@ export class Downloader {
 
         return throwError(() => err);
       }),
-      finalize(() => this.subject$.next({ type: 'CHUNK_FINISHED' })),
+      finalize(() => subject$.next({ type: 'CHUNK_FINISHED' })),
     );
 
     try {
       const fileStream = fs.createWriteStream(file.filepath as string, { flags: 'a' });
-      this.subject$.next({ type: 'CHUNK_STARTED' });
+      subject$.next({ type: 'CHUNK_STARTED' });
       await pipeline(download$, fileStream, { signal });
     } catch (err) {
       if (signal.aborted && signal.reason === 'FILE_SKIP') return;
