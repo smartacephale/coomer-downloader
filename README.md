@@ -29,9 +29,6 @@ npm install -g coomer-downloader
 * #### COOMER/KEMONO: 
 ```shell
 npx coomer-downloader --u https://coomer.st/onlyfans/user/<username>
-
-# fallback without image preview
-npx coomer-downloader-fallback --u https://coomer.st/onlyfans/user/<username>
 ```
 * #### BUNKR: 
 ```haskell
@@ -50,6 +47,12 @@ npx coomer-downloader --u https://nsfw.xxx/user/<username>
 ```haskell
 npx coomer-downloader --u https://random.com/file.mp4
 ```
+
+* #### Fallback without image preview:
+```shell
+npx coomer-downloader-fallback ...
+```
+
 
 ### Options:
 ```bash
