@@ -1,5 +1,6 @@
-import Image, { TerminalInfoProvider } from '@violent-orangutan/ink-picture';
+// import Image, { TerminalInfoProvider } from '@violent-orangutan/ink-picture';
 import { Box } from 'ink';
+import Image, { TerminalInfoProvider } from 'ink-picture';
 import React from 'react';
 import type { CoomerFile } from '../../../core/index.ts';
 import { isImage } from '../../../utils/mediatypes.ts';
@@ -20,7 +21,12 @@ export function Preview({ file }: PreviewProps) {
       <Box key={`box-${file.downloaded}`} width={30} height={15}>
         <TerminalInfoProvider>
           <Box width={30} height={15} padding={1}>
-            <Image protocol={'halfBlock'} src={file.filepath as string} alt={file.name} />
+            <Image
+              protocol={'halfBlock'}
+              // allowPartial={true}
+              src={file.filepath as string}
+              alt={file.name}
+            />
           </Box>
         </TerminalInfoProvider>
       </Box>

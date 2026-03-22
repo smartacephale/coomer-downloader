@@ -48,7 +48,7 @@ export class CoomerFileList {
       name: f.name,
     }));
 
-    const str = JSON.stringify(state);
+    const str = JSON.stringify(state, null, ' ');
     await saveFileData(this.stateFilePath, str);
 
     return this;
